@@ -7,14 +7,15 @@ previews, dimensions, the license and a ready-made attribution line.
 
 - **Sources:** [Wikimedia Commons](https://commons.wikimedia.org) (primary) and
   [Openverse](https://openverse.org) (fallback). No API keys anywhere.
-- **Transports:** stateless Streamable HTTP at `/mcp` (Cloudflare Workers) and
+- **Transports:** stateless Streamable HTTP at `/mcp` (Vercel Edge Function) and
   stdio for local use.
 - **Safety filter on by default.** Results are openly licensed, so they skew
   documentary/educational rather than reaction memes.
 
-> **Public endpoint:** `https://mcp-gifs.vikram-gorla.workers.dev/mcp`
-> (no auth, no API key; landing page at <https://mcp-gifs.vikram-gorla.workers.dev/>,
-> health check at `/health`). To run your own copy, see [Self-host / deploy](#self-host--deploy).
+> **Public endpoint:** `https://gifs.vikram-gorla.com/mcp`
+> (no auth, no API key; landing page at <https://gifs.vikram-gorla.com/>,
+> health check at `/health`). Hosted on Vercel Hobby. To run your own copy,
+> see [Self-host / deploy](#self-host--deploy).
 
 ## Connect
 
@@ -25,7 +26,7 @@ previews, dimensions, the license and a ready-made attribution line.
 ```json
 {
   "mcpServers": {
-    "gifs": { "url": "https://mcp-gifs.vikram-gorla.workers.dev/mcp" }
+    "gifs": { "url": "https://gifs.vikram-gorla.com/mcp" }
   }
 }
 ```
@@ -38,17 +39,17 @@ custom connectors, bridge through stdio with
 ```json
 {
   "mcpServers": {
-    "gifs": { "command": "npx", "args": ["-y", "mcp-remote", "https://mcp-gifs.vikram-gorla.workers.dev/mcp"] }
+    "gifs": { "command": "npx", "args": ["-y", "mcp-remote", "https://gifs.vikram-gorla.com/mcp"] }
   }
 }
 ```
 
-**Claude Code**: `claude mcp add --transport http gifs https://mcp-gifs.vikram-gorla.workers.dev/mcp`
+**Claude Code**: `claude mcp add --transport http gifs https://gifs.vikram-gorla.com/mcp`
 
 **VS Code**: `.vscode/mcp.json`:
 
 ```json
-{ "servers": { "gifs": { "type": "http", "url": "https://mcp-gifs.vikram-gorla.workers.dev/mcp" } } }
+{ "servers": { "gifs": { "type": "http", "url": "https://gifs.vikram-gorla.com/mcp" } } }
 ```
 
 **Anything else**: any client that speaks MCP Streamable HTTP. The server is
@@ -206,13 +207,12 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 ## Rate limits
 
 - Hosted endpoint: a **server-wide cap of 25 MCP requests per minute** (checked
-  first) and about **60 MCP requests per minute per IP**. Both limits are
-  enforced per Cloudflare location — Workers Rate Limiting bindings are not a
-  single global counter — and return HTTP 429 with `Retry-After: 60`. The
-  server-wide cap is set conservatively so this Worker stays within the
-  included 10 million requests/month on the account's Workers Paid plan
-  even if a handful of locations are busy at once; it is not an account
-  spending limit.
+  first, per isolate) and about **60 MCP requests per minute per IP**. The
+  public Vercel instance enforces these in memory (best-effort, per instance)
+  and with one Vercel Firewall rate-limit rule (free on Hobby: 1 rule and
+  1 million allowed requests/month included). Both return HTTP 429 with
+  `Retry-After: 60`. A self-hosted Cloudflare Worker can use the
+  `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings instead.
 - Results are cached for 10 minutes, so repeated searches are cheap.
 - Upstream: Commons is queried sequentially with a descriptive User-Agent
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and
@@ -223,11 +223,33 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
 ## Self-host / deploy
 
-Requirements: Node 20+, a free Cloudflare account.
+The public instance is on **Vercel Hobby**. That plan is free and **pauses**
+when included usage is exhausted; it does not start billing. Requirements to
+run your own copy: Node 20+, and either a Vercel Hobby account or a
+Cloudflare account.
+
+### Vercel (how the public instance is hosted)
 
 ```bash
 npm ci
-npm test                      # unit tests (mocked upstreams)
+npm test
+npx vercel login              # once, on a Hobby (free) team
+npx vercel                    # preview
+npx vercel --prod             # production, default *.vercel.app URL
+```
+
+`api/index.ts` is an Edge Function that reuses the shared HTTP core
+(`src/app.ts`) and serves `/`, `/health` and `/mcp`. `vercel.json` rewrites
+those paths to the function. CI deploys through GitHub Actions with the
+Vercel CLI (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` repository
+secrets). Vercel's own Git auto-deploy is not used, so a push does not
+deploy twice.
+
+### Cloudflare Workers (optional self-host)
+
+```bash
+npm ci
+npm test
 npm run dev                   # wrangler dev on http://localhost:8787 (/, /health, /mcp)
 npx wrangler login            # once
 npm run deploy                # wrangler deploy → https://mcp-gifs.<subdomain>.workers.dev
@@ -238,6 +260,7 @@ npm run deploy                # wrangler deploy → https://mcp-gifs.<subdomain>
 - `RATE_LIMITER`: Workers Rate Limiting binding (60 requests / 60 s / IP).
   Change `namespace_id` if `4711` clashes with another binding in your account,
   or remove the block to disable rate limiting.
+- `GLOBAL_RATE_LIMITER`: 25 requests / 60 s on a constant `global` key.
 - `CACHE_TTL_SECONDS`: result cache TTL (default `600`).
 
 Quick manual check against a running server:
@@ -259,7 +282,8 @@ npm run stdio                                       # run the stdio server from 
 
 Layout: `src/sources/` (Commons and Openverse clients and mapping),
 `src/search.ts` (fallback, de-duplication, caching), `src/safety.ts`,
-`src/server.ts` (MCP tools), `src/worker.ts` (Workers entry), `src/stdio.ts`.
+`src/server.ts` (MCP tools), `src/app.ts` (shared HTTP), `src/vercel.ts` /
+`api/index.ts` (Vercel Edge entry), `src/worker.ts` (Workers self-host entry), `src/stdio.ts`.
 Design rationale: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## License

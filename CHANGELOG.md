@@ -6,7 +6,29 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-11-14
+## [0.2.0] - 2026-11-14
+
+### Changed
+- The public instance now runs on Vercel Hobby (free) at
+  `https://gifs.vikram-gorla.com/mcp`. Hobby pauses when included usage is
+  exhausted instead of billing; the previous Cloudflare Workers host was on
+  an account-wide paid plan. Cloudflare Workers remains a supported
+  self-host option (`wrangler deploy`).
+- Rate limiting on the public instance is a best-effort in-memory limiter
+  (25 requests / 60 s server-wide per isolate, 60 / 60 s per IP) plus one
+  Vercel Firewall rate-limit rule (free on Hobby: 1 rule and 1 million
+  allowed requests/month included). Search results stay cached in memory
+  for 10 minutes; `/` and `/health` send CDN cache headers.
+
+### Added
+- Vercel Edge Function entry (`api/index.ts` / `src/vercel.ts`) serving the
+  same `/mcp`, `/` and `/health` routes from the shared HTTP core.
+- GitHub Actions: CI on pull requests, preview deploys on PRs, and
+  production deploys on pushes to `main` and on version tags, using the
+  Vercel CLI (Vercel's own Git auto-deploy is left off to avoid double
+  deploys).
+
+[0.2.0]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.2.0
 
 ### Fixed
 - Safety filter no longer blocks harmless medical and food phrases that
@@ -56,5 +78,6 @@ All notable changes to this project are documented here. The format follows
   `Retry-After`, Openverse cool-down after failures).
 - Unit tests with mocked upstreams, live smoke script, GitHub Actions CI.
 
+[0.2.0]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.2.0
 [0.1.1]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.1.0

@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   run:
-    if: github.repository == 'vikramgorla/mcp-gifs' && secrets.VERCEL_TOKEN != ''
+    if: github.repository == 'vikramgorla/mcp-gifs'
     runs-on: ubuntu-latest
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

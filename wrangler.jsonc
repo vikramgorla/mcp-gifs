@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mcp-gifs",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  // Deploys to the default https://mcp-gifs.<your-subdomain>.workers.dev (no custom domain/DNS).
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": { "CACHE_TTL_SECONDS": "600" },
+  // Workers Rate Limiting binding (available on the free plan): 60 MCP POSTs per IP per minute, per location.
+  "ratelimits": [
+    { "name": "RATE_LIMITER", "namespace_id": "4711", "simple": { "limit": 60, "period": 60 } }
+  ]
+}

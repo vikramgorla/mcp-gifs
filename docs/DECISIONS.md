@@ -95,42 +95,58 @@ stdio entry using `serveStdio` from `@modelcontextprotocol/server/stdio`.
 - Tool schemas are zod v4 (Standard Schema), which the SDK uses for both
   validation and the JSON Schema shown in `tools/list`.
 
-## 5. Hosting: Cloudflare Workers free plan
+## 5. Hosting: Vercel Hobby for the public instance (v0.2.0)
 
-**Decision.** Worker name `mcp-gifs`, deployed to the default
-`https://mcp-gifs.<subdomain>.workers.dev` (`workers_dev: true`); the public
-instance is <https://mcp-gifs.vikram-gorla.workers.dev/mcp>. No custom
-domain or DNS changes.
+**Decision.** The public instance runs on **Vercel Hobby** (free) as an Edge
+Function, at `https://gifs.vikram-gorla.com` (and the default
+`*.vercel.app` URL). Cloudflare Workers remains a supported self-host
+target (`src/worker.ts`, `wrangler.jsonc`) but is no longer the hosted
+copy.
 
-**Why.** Free plan (100k requests/day), global, zero ops, and the bundle is
-small (about 220 KB gzipped, well under the 3 MB free limit). Each request
-makes at most 4 upstream subrequests (free limit: 50).
+**Why we moved.** The Cloudflare account is on Workers Paid, which is
+billed account-wide ($0.30 per extra million requests after the included
+allowance). A busy or abused public MCP could have incurred charges on the
+whole account. Vercel Hobby never bills: when included usage is exhausted
+the project **pauses** until the next period. Hobby also includes a custom
+domain (up to 50 per project) and one Firewall rate-limit rule with
+1 million allowed requests/month.
+
+**Why Edge, not Node.** The handler is already written against the Web
+Fetch API (it ran on workerd). Edge avoids a full Node isolate and keeps
+Active CPU use down on a plan that includes only 4 CPU-hours/month.
+
+**What we did not do.** No Pro upgrade, no paid add-on, no extra domains
+beyond `gifs.vikram-gorla.com`, and no Vercel Git auto-deploy (GitHub
+Actions runs `vercel deploy` so a push is not deployed twice).
+
+Hobby included usage (as documented by Vercel at the time of the move):
+1 million function invocations, 1 million CDN requests, 4 CPU-hours,
+360 GB-hours provisioned memory, 100 GB Fast Data Transfer, 10 GB Fast
+Origin Transfer, 100 deployments/day, 1 concurrent build. Exceeding a
+limit pauses that feature rather than starting a bill.
+
+## 5a. Cloudflare Workers as a self-host option
+
+The original Workers target is unchanged for people who want to deploy
+their own copy to `workers.dev`. Worker name `mcp-gifs`,
+`workers_dev: true`, no custom domain required.
 
 ## 6. Rate limiting and caching
 
-- **Per-IP limit**: Workers Rate Limiting binding `RATE_LIMITER`, 60 MCP POSTs
-  per IP per 60 s per Cloudflare location (counts are approximate). Over the
-  limit: HTTP 429 with a JSON-RPC error and `Retry-After: 60`. IP is the only
-  key available for a no-auth server.
-- **Server-wide cap** (v0.1.1): a second binding, `GLOBAL_RATE_LIMITER`,
-  keyed on the constant `global`, checked **before** the per-IP limiter, at
-  **25 MCP requests per 60 s**. The account is on Workers Paid (10 million
-  requests/month included, $0.30 per extra million, billed account-wide).
-  The cap exists so this Worker alone cannot chew through that included
-  allowance; no account spending limits or other billing settings were
-  changed.
-  Counters on a Rate Limiting binding are **per location**, not one
-  worldwide total. A limit of 150/60 s would be about 6.5 million/month
-  only if it were a single counter; multiplied by many colos it could
-  exceed 10 million. 25/60 s is about 1.08 million/month per location,
-  which stays around 6.5 million/month if up to six locations are at the
-  cap and under the 10 million included allowance if up to nine are.
-  Landing and `/health` are not capped, so the version endpoint stays
-  reachable. Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
-- **Caching**: successful search results are cached in the Workers Cache API
-  for 10 minutes (`CACHE_TTL_SECONDS`), keyed by normalised words, source,
-  safety, limit and size cap. Partial results (a source failed or was skipped)
-  are not cached. stdio uses an in-memory cache.
+- **Public instance (Vercel, v0.2.0):** a best-effort in-memory limiter in
+  the Edge isolate (25 / 60 s on a `global` key, then 60 / 60 s per IP,
+  POST `/mcp` only) plus one Vercel Firewall rate-limit rule, which is
+  included on Hobby (1 rule per project, 1 million allowed requests/month;
+  counters are per region). Landing and `/health` are not capped.
+  Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
+- **Self-host (Workers):** `RATE_LIMITER` (60 MCP POSTs / 60 s / IP) and
+  `GLOBAL_RATE_LIMITER` (25 / 60 s, key `global`), both per Cloudflare
+  location, as in v0.1.1.
+- **Caching**: successful search results are cached for 10 minutes, keyed
+  by normalised words, source, safety, limit and size cap. On Vercel this
+  is an in-memory map (per isolate); on Workers it is the Cache API.
+  `/` and `/health` also send `Cache-Control` so the CDN can reuse them.
+  Partial results are not cached. stdio uses the in-memory cache.
 - **Upstream politeness**: Wikimedia User-Agent policy
   `mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`, sequential
   requests (no fan-out), 8 s Commons timeouts, one retry on 429/503 only when

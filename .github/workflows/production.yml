@@ -1,0 +1,48 @@
+name: Production
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.repository == 'vikramgorla/mcp-gifs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require Vercel secrets
+        id: require
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ] || [ -z "$VERCEL_TOKEN" ]; then
+            echo "has_secrets=false" >> "$GITHUB_OUTPUT"
+            echo "Vercel project secrets are not set yet; skipping production deploy."
+          else
+            echo "has_secrets=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v5
+        if: steps.require.outputs.has_secrets == 'true'
+      - uses: actions/setup-node@v5
+        if: steps.require.outputs.has_secrets == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm i -g vercel@latest
+        if: steps.require.outputs.has_secrets == 'true'
+      - name: Deploy production
+        if: steps.require.outputs.has_secrets == 'true'
+        id: deploy
+        run: |
+          url=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production URL: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

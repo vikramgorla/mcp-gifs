@@ -1,0 +1,63 @@
+{
+  "name": "mcp-gifs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Public, no-auth MCP server that finds openly licensed animated GIFs by keyword (Wikimedia Commons + Openverse).",
+  "type": "module",
+  "license": "MIT",
+  "author": "Vikram Gorla",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramgorla/mcp-gifs.git"
+  },
+  "homepage": "https://github.com/vikramgorla/mcp-gifs#readme",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "gif",
+    "wikimedia-commons",
+    "openverse",
+    "cloudflare-workers"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "mcp-gifs": "dist/stdio.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run --outdir .wrangler/dry",
+    "stdio": "tsx src/stdio.ts",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.4.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
+  },
+  "allowScripts": {
+    "workerd": true,
+    "esbuild": true
+  }
+}

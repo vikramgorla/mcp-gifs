@@ -46,14 +46,16 @@ jobs:
             echo "Failed to read org/project ids from .vercel/project.json" >&2
             exit 1
           fi
+          echo "ORG_ID=$org"
+          echo "PROJECT_ID=$prj"
           printf '%s\n' '{"ssoProtection":{"deploymentType":"preview"}}' > /tmp/vercel-ops/protect.json
           vercel api "/v9/projects/${prj}" -X PATCH --input /tmp/vercel-ops/protect.json --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/project.json
           node -e '
             const p = require("/tmp/vercel-ops/project.json");
-            const sso = p.ssoProtection ?? p.protection?.sso ?? null;
+            const sso = p.ssoProtection != null ? p.ssoProtection : null;
             console.log("ssoProtection=" + JSON.stringify(sso));
-            console.log("framework=" + JSON.stringify(p.framework ?? null));
-            console.log("link=" + JSON.stringify(p.link ?? p.accountId && p.gitForkProtection));
+            console.log("framework=" + JSON.stringify(p.framework || null));
+            console.log("hasGitLink=" + Boolean(p.link));
           '
           echo "vercel_org_id=$org" >> "$GITHUB_OUTPUT"
           echo "vercel_project_id=$prj" >> "$GITHUB_OUTPUT"

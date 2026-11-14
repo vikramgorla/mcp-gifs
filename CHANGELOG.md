@@ -9,13 +9,13 @@ All notable changes to this project are documented here. The format follows
 ## [0.2.1] - 2026-11-14
 
 ### Changed
-- The in-memory global cap on the public Vercel instance is 600 MCP
-  requests / 60 s per isolate (was 25), configurable with
-  `GLOBAL_RATE_LIMIT_PER_MINUTE`. This is only a per-instance safety net;
-  the authoritative per-IP limit is the Vercel Firewall rule
+- In-memory rate limits on the Vercel entry are off by default. Set
+  `RATE_LIMIT_PER_IP` and/or `RATE_LIMIT_GLOBAL` (requests per 60 s) to
+  opt in; unset or 0 disables them. The public Vercel deployment does not
+  set these variables. The only limit there is the Vercel Firewall rule
   `mcp-rate-limit` (path prefix `/mcp`, fixed window of 60 s, 60 requests
   per IP, HTTP 429 when exceeded), which was added in the dashboard after
-  0.2.0. The in-memory per-IP limit stays at 60 / 60 s.
+  0.2.0. Self-hosters on other platforms can enable the env limits.
 
 ## [0.2.0] - 2026-11-14
 

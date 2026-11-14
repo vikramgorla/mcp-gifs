@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MEMORY_GLOBAL_LIMIT, DEFAULT_MEMORY_PER_IP_LIMIT, clientIpFromHeaders, envInt, memoryRateLimiter } from '../src/limit.js';
+import { clientIpFromHeaders, envRateLimit, memoryLimitersFromEnv, memoryRateLimiter } from '../src/limit.js';
 
 describe('memoryRateLimiter', () => {
   it('allows up to the limit then denies until the window resets', async () => {
@@ -29,21 +29,36 @@ describe('clientIpFromHeaders', () => {
   });
 });
 
-describe('envInt', () => {
-  it('returns the fallback for missing or invalid values', () => {
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, {})).toBe(600);
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '' })).toBe(600);
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: 'nope' })).toBe(600);
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '0' })).toBe(600);
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '-10' })).toBe(600);
+describe('envRateLimit', () => {
+  it('treats unset, empty, 0, or invalid values as disabled', () => {
+    expect(envRateLimit('RATE_LIMIT_PER_IP', {})).toBeUndefined();
+    expect(envRateLimit('RATE_LIMIT_PER_IP', { RATE_LIMIT_PER_IP: '' })).toBeUndefined();
+    expect(envRateLimit('RATE_LIMIT_PER_IP', { RATE_LIMIT_PER_IP: '0' })).toBeUndefined();
+    expect(envRateLimit('RATE_LIMIT_PER_IP', { RATE_LIMIT_PER_IP: 'nope' })).toBeUndefined();
+    expect(envRateLimit('RATE_LIMIT_PER_IP', { RATE_LIMIT_PER_IP: '-10' })).toBeUndefined();
+    expect(envRateLimit('RATE_LIMIT_GLOBAL', { RATE_LIMIT_GLOBAL: '0' })).toBeUndefined();
   });
-  it('parses a positive integer override', () => {
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '1200' })).toBe(1200);
-    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: ' 90 ' })).toBe(90);
+  it('parses a positive integer opt-in', () => {
+    expect(envRateLimit('RATE_LIMIT_PER_IP', { RATE_LIMIT_PER_IP: '60' })).toBe(60);
+    expect(envRateLimit('RATE_LIMIT_GLOBAL', { RATE_LIMIT_GLOBAL: ' 120 ' })).toBe(120);
   });
-  it('keeps the default global cap above the per-IP cap', () => {
-    expect(DEFAULT_MEMORY_GLOBAL_LIMIT).toBe(600);
-    expect(DEFAULT_MEMORY_PER_IP_LIMIT).toBe(60);
-    expect(DEFAULT_MEMORY_GLOBAL_LIMIT).toBeGreaterThan(DEFAULT_MEMORY_PER_IP_LIMIT);
+});
+
+describe('memoryLimitersFromEnv', () => {
+  it('leaves both limiters off when env vars are unset', () => {
+    const l = memoryLimitersFromEnv({});
+    expect(l.globalRateLimiter).toBeUndefined();
+    expect(l.rateLimiter).toBeUndefined();
+  });
+  it('enables only the limiters that have a positive value', async () => {
+    const off = memoryLimitersFromEnv({ RATE_LIMIT_PER_IP: '0', RATE_LIMIT_GLOBAL: '0' });
+    expect(off.globalRateLimiter).toBeUndefined();
+    expect(off.rateLimiter).toBeUndefined();
+    const both = memoryLimitersFromEnv({ RATE_LIMIT_PER_IP: '1', RATE_LIMIT_GLOBAL: '2' });
+    expect(await both.rateLimiter!.limit({ key: 'mcp:1.1.1.1' })).toEqual({ success: true });
+    expect(await both.rateLimiter!.limit({ key: 'mcp:1.1.1.1' })).toEqual({ success: false });
+    expect(await both.globalRateLimiter!.limit({ key: 'global' })).toEqual({ success: true });
+    expect(await both.globalRateLimiter!.limit({ key: 'global' })).toEqual({ success: true });
+    expect(await both.globalRateLimiter!.limit({ key: 'global' })).toEqual({ success: false });
   });
 });

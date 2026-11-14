@@ -26,21 +26,33 @@ export function clientIpFromHeaders(request: Request): string {
   return first || request.headers.get('x-real-ip') || request.headers.get('x-vercel-forwarded-for') || 'unknown';
 }
 
-/** Default in-memory global cap on the Vercel entry (requests / 60 s / isolate). */
-export const DEFAULT_MEMORY_GLOBAL_LIMIT = 600;
-/** Default in-memory per-IP cap on the Vercel entry (requests / 60 s / isolate). */
-export const DEFAULT_MEMORY_PER_IP_LIMIT = 60;
-/** Optional override for the in-memory global cap. */
-export const GLOBAL_RATE_LIMIT_ENV = 'GLOBAL_RATE_LIMIT_PER_MINUTE';
+/** Opt-in in-memory per-IP cap (requests / 60 s). Unset or 0 disables. */
+export const RATE_LIMIT_PER_IP_ENV = 'RATE_LIMIT_PER_IP';
+/** Opt-in in-memory global cap (requests / 60 s). Unset or 0 disables. */
+export const RATE_LIMIT_GLOBAL_ENV = 'RATE_LIMIT_GLOBAL';
 
-/** Parse a positive integer from an env map; fall back if missing or invalid. */
-export function envInt(
+/**
+ * Parse an opt-in requests-per-60s limit. Unset, empty, 0, or an invalid
+ * value means the limiter is disabled.
+ */
+export function envRateLimit(
   name: string,
-  fallback: number,
   source: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env : {},
-): number {
+): number | undefined {
   const raw = source[name]?.trim();
-  if (!raw || !/^\d+$/.test(raw)) return fallback;
+  if (!raw || !/^\d+$/.test(raw)) return undefined;
   const n = Number.parseInt(raw, 10);
-  return n >= 1 ? n : fallback;
+  return n >= 1 ? n : undefined;
+}
+
+/** Build in-memory limiters from env; missing or 0 vars leave that limiter off. */
+export function memoryLimitersFromEnv(
+  source: Record<string, string | undefined> = typeof process !== 'undefined' ? process.env : {},
+) {
+  const globalLimit = envRateLimit(RATE_LIMIT_GLOBAL_ENV, source);
+  const perIpLimit = envRateLimit(RATE_LIMIT_PER_IP_ENV, source);
+  return {
+    globalRateLimiter: globalLimit ? memoryRateLimiter(globalLimit, 60_000) : undefined,
+    rateLimiter: perIpLimit ? memoryRateLimiter(perIpLimit, 60_000) : undefined,
+  };
 }

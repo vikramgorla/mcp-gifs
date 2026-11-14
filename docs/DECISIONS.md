@@ -133,20 +133,20 @@ their own copy to `workers.dev`. Worker name `mcp-gifs`,
 
 ## 6. Rate limiting and caching
 
-- **Public instance (Vercel, v0.2.1):** the authoritative per-IP limit is
-  the Vercel Firewall rule `mcp-rate-limit` (path prefix `/mcp`, fixed
-  window of 60 s, 60 requests per IP, HTTP 429 when exceeded). It is
-  included on Hobby (1 rule per project, 1 million allowed requests/month;
-  counters are per region) and was added in the dashboard after the 0.2.0
-  release. The Edge Function also has a best-effort in-memory safety net
-  that is per isolate only (a global 600 / 60 s cap, configurable with
-  `GLOBAL_RATE_LIMIT_PER_MINUTE`, then 60 / 60 s per IP, on POST `/mcp`).
-  That in-memory global cap is **not** a cost control: Vercel Hobby cannot
-  bill and pauses instead, so the Cloudflare-era 25 / 60 s Workers Paid
-  allowance math does not apply here. 600 is high enough that many clients
-  can each use their 60 / IP Firewall allowance on one isolate, and low
-  enough to stop a single instance running away. Landing and `/health` are
-  not capped. Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
+- **Public instance (Vercel, v0.2.1):** the only limit is the Vercel
+  Firewall rule `mcp-rate-limit` (path prefix `/mcp`, fixed window of
+  60 s, 60 requests per IP, HTTP 429 when exceeded). It is included on
+  Hobby (1 rule per project, 1 million allowed requests/month; counters
+  are per region) and was added in the dashboard after the 0.2.0 release.
+  In-memory per-IP and global limiters in the Edge Function are **off by
+  default** and are not configured on the public deployment. Self-hosters
+  on Vercel or other platforms can opt in with `RATE_LIMIT_PER_IP` and
+  `RATE_LIMIT_GLOBAL` (requests per 60 s; unset or 0 disables). Those
+  in-memory counters are per isolate only and are not a cost control:
+  Vercel Hobby cannot bill and pauses instead, so the Cloudflare-era
+  25 / 60 s Workers Paid allowance math does not apply here. Landing and
+  `/health` are not capped. Over an enabled in-memory limit: HTTP 429,
+  JSON-RPC error, `Retry-After: 60`.
 - **Self-host (Workers):** `RATE_LIMITER` (60 MCP POSTs / 60 s / IP) and
   `GLOBAL_RATE_LIMITER` (25 / 60 s, key `global`), both per Cloudflare
   location, as in v0.1.1.

@@ -12,8 +12,9 @@ previews, dimensions, the license and a ready-made attribution line.
 - **Safety filter on by default.** Results are openly licensed, so they skew
   documentary/educational rather than reaction memes.
 
-> **Public endpoint:** `https://mcp-gifs.<subdomain>.workers.dev/mcp`
-> (placeholder, not deployed yet; see [Self-host / deploy](#self-host--deploy)).
+> **Public endpoint:** `https://mcp-gifs.vikram-gorla.workers.dev/mcp`
+> (no auth, no API key; landing page at <https://mcp-gifs.vikram-gorla.workers.dev/>,
+> health check at `/health`). To run your own copy, see [Self-host / deploy](#self-host--deploy).
 
 ## Connect
 
@@ -24,7 +25,7 @@ previews, dimensions, the license and a ready-made attribution line.
 ```json
 {
   "mcpServers": {
-    "gifs": { "url": "https://mcp-gifs.<subdomain>.workers.dev/mcp" }
+    "gifs": { "url": "https://mcp-gifs.vikram-gorla.workers.dev/mcp" }
   }
 }
 ```
@@ -37,17 +38,17 @@ custom connectors, bridge through stdio with
 ```json
 {
   "mcpServers": {
-    "gifs": { "command": "npx", "args": ["-y", "mcp-remote", "https://mcp-gifs.<subdomain>.workers.dev/mcp"] }
+    "gifs": { "command": "npx", "args": ["-y", "mcp-remote", "https://mcp-gifs.vikram-gorla.workers.dev/mcp"] }
   }
 }
 ```
 
-**Claude Code**: `claude mcp add --transport http gifs https://mcp-gifs.<subdomain>.workers.dev/mcp`
+**Claude Code**: `claude mcp add --transport http gifs https://mcp-gifs.vikram-gorla.workers.dev/mcp`
 
 **VS Code**: `.vscode/mcp.json`:
 
 ```json
-{ "servers": { "gifs": { "type": "http", "url": "https://mcp-gifs.<subdomain>.workers.dev/mcp" } } }
+{ "servers": { "gifs": { "type": "http", "url": "https://mcp-gifs.vikram-gorla.workers.dev/mcp" } } }
 ```
 
 **Anything else**: any client that speaks MCP Streamable HTTP. The server is

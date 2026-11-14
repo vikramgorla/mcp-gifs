@@ -96,7 +96,8 @@ stdio entry using `serveStdio` from `@modelcontextprotocol/server/stdio`.
 ## 5. Hosting: Cloudflare Workers free plan
 
 **Decision.** Worker name `mcp-gifs`, deployed to the default
-`https://mcp-gifs.<subdomain>.workers.dev` (`workers_dev: true`). No custom
+`https://mcp-gifs.<subdomain>.workers.dev` (`workers_dev: true`); the public
+instance is <https://mcp-gifs.vikram-gorla.workers.dev/mcp>. No custom
 domain or DNS changes.
 
 **Why.** Free plan (100k requests/day), global, zero ops, and the bundle is

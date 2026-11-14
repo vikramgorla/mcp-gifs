@@ -206,13 +206,17 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
 ## Rate limits
 
-- Hosted endpoint: a **server-wide cap of 25 MCP requests per minute** (checked
-  first, per isolate) and about **60 MCP requests per minute per IP**. The
-  public Vercel instance enforces these in memory (best-effort, per instance)
-  and with one Vercel Firewall rate-limit rule (free on Hobby: 1 rule and
-  1 million allowed requests/month included). Both return HTTP 429 with
-  `Retry-After: 60`. A self-hosted Cloudflare Worker can use the
-  `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings instead.
+- Hosted endpoint: the real per-IP cap is the Vercel Firewall rule
+  `mcp-rate-limit` (path prefix `/mcp`, fixed window of 60 s, **60 requests
+  per IP**, HTTP 429 when exceeded; 1 rule and 1 million allowed
+  requests/month are included on Hobby). The Edge Function also keeps a
+  best-effort **in-memory safety net** that is per isolate only: **60 / 60 s
+  per IP**, and a **global 600 / 60 s** cap (checked first) so one instance
+  cannot run away. The global cap is configurable with
+  `GLOBAL_RATE_LIMIT_PER_MINUTE`. Both the Firewall and the in-memory
+  limiter return HTTP 429 with `Retry-After: 60`. A self-hosted Cloudflare
+  Worker can use the `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings
+  instead.
 - Results are cached for 10 minutes, so repeated searches are cheap.
 - Upstream: Commons is queried sequentially with a descriptive User-Agent
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and
@@ -243,7 +247,8 @@ npx vercel --prod             # production, default *.vercel.app URL
 those paths to the function. CI deploys through GitHub Actions with the
 Vercel CLI (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` repository
 secrets). Vercel's own Git auto-deploy is not used, so a push does not
-deploy twice.
+deploy twice. Optional: `GLOBAL_RATE_LIMIT_PER_MINUTE` overrides the
+in-memory global safety-net cap (default 600).
 
 ### Cloudflare Workers (optional self-host)
 

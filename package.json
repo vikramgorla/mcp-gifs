@@ -1,6 +1,6 @@
 {
   "name": "mcp-gifs",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Public, no-auth MCP server that finds openly licensed animated GIFs by keyword (Wikimedia Commons + Openverse).",
   "type": "module",

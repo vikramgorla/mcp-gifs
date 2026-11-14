@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientIpFromHeaders, memoryRateLimiter } from '../src/limit.js';
+import { DEFAULT_MEMORY_GLOBAL_LIMIT, DEFAULT_MEMORY_PER_IP_LIMIT, clientIpFromHeaders, envInt, memoryRateLimiter } from '../src/limit.js';
 
 describe('memoryRateLimiter', () => {
   it('allows up to the limit then denies until the window resets', async () => {
@@ -26,5 +26,24 @@ describe('clientIpFromHeaders', () => {
   it('falls back to x-real-ip and unknown', () => {
     expect(clientIpFromHeaders(new Request('https://x', { headers: { 'x-real-ip': '8.8.8.8' } }))).toBe('8.8.8.8');
     expect(clientIpFromHeaders(new Request('https://x'))).toBe('unknown');
+  });
+});
+
+describe('envInt', () => {
+  it('returns the fallback for missing or invalid values', () => {
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, {})).toBe(600);
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '' })).toBe(600);
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: 'nope' })).toBe(600);
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '0' })).toBe(600);
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '-10' })).toBe(600);
+  });
+  it('parses a positive integer override', () => {
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: '1200' })).toBe(1200);
+    expect(envInt('GLOBAL_RATE_LIMIT_PER_MINUTE', 600, { GLOBAL_RATE_LIMIT_PER_MINUTE: ' 90 ' })).toBe(90);
+  });
+  it('keeps the default global cap above the per-IP cap', () => {
+    expect(DEFAULT_MEMORY_GLOBAL_LIMIT).toBe(600);
+    expect(DEFAULT_MEMORY_PER_IP_LIMIT).toBe(60);
+    expect(DEFAULT_MEMORY_GLOBAL_LIMIT).toBeGreaterThan(DEFAULT_MEMORY_PER_IP_LIMIT);
   });
 });

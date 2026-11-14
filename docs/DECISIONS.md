@@ -133,12 +133,20 @@ their own copy to `workers.dev`. Worker name `mcp-gifs`,
 
 ## 6. Rate limiting and caching
 
-- **Public instance (Vercel, v0.2.0):** a best-effort in-memory limiter in
-  the Edge isolate (25 / 60 s on a `global` key, then 60 / 60 s per IP,
-  POST `/mcp` only) plus one Vercel Firewall rate-limit rule, which is
-  included on Hobby (1 rule per project, 1 million allowed requests/month;
-  counters are per region). Landing and `/health` are not capped.
-  Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
+- **Public instance (Vercel, v0.2.1):** the only limit is the Vercel
+  Firewall rule `mcp-rate-limit` (path prefix `/mcp`, fixed window of
+  60 s, 60 requests per IP, HTTP 429 when exceeded). It is included on
+  Hobby (1 rule per project, 1 million allowed requests/month; counters
+  are per region) and was added in the dashboard after the 0.2.0 release.
+  In-memory per-IP and global limiters in the Edge Function are **off by
+  default** and are not configured on the public deployment. Self-hosters
+  on Vercel or other platforms can opt in with `RATE_LIMIT_PER_IP` and
+  `RATE_LIMIT_GLOBAL` (requests per 60 s; unset or 0 disables). Those
+  in-memory counters are per isolate only and are not a cost control:
+  Vercel Hobby cannot bill and pauses instead, so the Cloudflare-era
+  25 / 60 s Workers Paid allowance math does not apply here. Landing and
+  `/health` are not capped. Over an enabled in-memory limit: HTTP 429,
+  JSON-RPC error, `Retry-After: 60`.
 - **Self-host (Workers):** `RATE_LIMITER` (60 MCP POSTs / 60 s / IP) and
   `GLOBAL_RATE_LIMITER` (25 / 60 s, key `global`), both per Cloudflare
   location, as in v0.1.1.

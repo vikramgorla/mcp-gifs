@@ -206,11 +206,14 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
 ## Rate limits
 
-- Hosted endpoint: a **server-wide cap of 25 MCP requests per minute** (checked
-  first, per isolate) and about **60 MCP requests per minute per IP**. The
-  public Vercel instance enforces these in memory (best-effort, per instance)
-  and with one Vercel Firewall rate-limit rule (free on Hobby: 1 rule and
-  1 million allowed requests/month included). Both return HTTP 429 with
+- Hosted endpoint: the only cap is the Vercel Firewall rule
+  `mcp-rate-limit` (path prefix `/mcp`, fixed window of 60 s, **60 requests
+  per IP**, HTTP 429 when exceeded; 1 rule and 1 million allowed
+  requests/month are included on Hobby). In-memory per-IP and global
+  limiters in the Edge Function are **off by default** and are not set on
+  the public deployment. Self-hosters on other platforms can enable them
+  with `RATE_LIMIT_PER_IP` and `RATE_LIMIT_GLOBAL` (requests per 60 s;
+  unset or 0 disables). Enabled in-memory limiters return HTTP 429 with
   `Retry-After: 60`. A self-hosted Cloudflare Worker can use the
   `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings instead.
 - Results are cached for 10 minutes, so repeated searches are cheap.
@@ -243,7 +246,9 @@ npx vercel --prod             # production, default *.vercel.app URL
 those paths to the function. CI deploys through GitHub Actions with the
 Vercel CLI (`VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` repository
 secrets). Vercel's own Git auto-deploy is not used, so a push does not
-deploy twice.
+deploy twice. In-memory rate limits stay off unless you set
+`RATE_LIMIT_PER_IP` and/or `RATE_LIMIT_GLOBAL` (the public project does
+not set them).
 
 ### Cloudflare Workers (optional self-host)
 

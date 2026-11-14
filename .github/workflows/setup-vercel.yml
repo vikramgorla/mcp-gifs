@@ -1,0 +1,154 @@
+name: Setup Vercel
+
+# One-shot ops that need the VERCEL_TOKEN repo secret. Prints only non-secret IDs.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: setup (create project + public production), domain, or firewall
+        type: choice
+        options: [setup, domain, firewall]
+        default: setup
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    if: github.repository == 'vikramgorla/mcp-gifs' && secrets.VERCEL_TOKEN != ''
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      SCOPE: vikramgorla-1967s-projects
+      TEAM_ID: team_bgA7CGAKz55YpKZ9mb269wla
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm i -g vercel@latest
+      - name: Create or reuse project and print ids
+        if: github.event.inputs.action == 'setup'
+        id: setup
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/vercel-ops
+          printf '%s\n' '{"name":"mcp-gifs","framework":null,"ssoProtection":{"deploymentType":"preview"}}' > /tmp/vercel-ops/create.json
+          # Create if missing; ignore "already exists".
+          set +e
+          vercel api /v10/projects -X POST --input /tmp/vercel-ops/create.json --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/create-out.json 2>/tmp/vercel-ops/create-err.txt
+          create_status=$?
+          set -e
+          vercel link --yes --project mcp-gifs --scope "$SCOPE" --token "$VERCEL_TOKEN"
+          org=$(node -p "require('./.vercel/project.json').orgId")
+          prj=$(node -p "require('./.vercel/project.json').projectId")
+          if [ -z "$org" ] || [ -z "$prj" ]; then
+            echo "Failed to read org/project ids from .vercel/project.json" >&2
+            exit 1
+          fi
+          printf '%s\n' '{"ssoProtection":{"deploymentType":"preview"}}' > /tmp/vercel-ops/protect.json
+          vercel api "/v9/projects/${prj}" -X PATCH --input /tmp/vercel-ops/protect.json --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/project.json
+          node -e '
+            const p = require("/tmp/vercel-ops/project.json");
+            const sso = p.ssoProtection ?? p.protection?.sso ?? null;
+            console.log("ssoProtection=" + JSON.stringify(sso));
+            console.log("framework=" + JSON.stringify(p.framework ?? null));
+            console.log("link=" + JSON.stringify(p.link ?? p.accountId && p.gitForkProtection));
+          '
+          echo "vercel_org_id=$org" >> "$GITHUB_OUTPUT"
+          echo "vercel_project_id=$prj" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Vercel project mcp-gifs"
+            echo "- ORG_ID: \`$org\`"
+            echo "- PROJECT_ID: \`$prj\`"
+            echo "- Production protection: preview-only (production is public)"
+            echo "- Git auto-deploy: not connected"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "ORG_ID=$org"
+          echo "PROJECT_ID=$prj"
+          echo "create_status=$create_status"
+
+      - name: Add custom domain
+        if: github.event.inputs.action == 'domain'
+        run: |
+          set -euo pipefail
+          org="${{ secrets.VERCEL_ORG_ID }}"
+          prj="${{ secrets.VERCEL_PROJECT_ID }}"
+          if [ -z "$org" ] || [ -z "$prj" ]; then
+            echo "VERCEL_ORG_ID / VERCEL_PROJECT_ID secrets are not set yet" >&2
+            exit 1
+          fi
+          mkdir -p /tmp/vercel-ops
+          printf '%s\n' '{"name":"gifs.vikram-gorla.com"}' > /tmp/vercel-ops/domain.json
+          set +e
+          vercel api "/v10/projects/${prj}/domains" -X POST --input /tmp/vercel-ops/domain.json --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/domain-out.json 2>/tmp/vercel-ops/domain-err.txt
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            # Re-fetch if it already exists.
+            vercel api "/v9/projects/${prj}/domains/gifs.vikram-gorla.com" --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/domain-out.json
+          fi
+          node -e '
+            const d = require("/tmp/vercel-ops/domain-out.json");
+            const name = d.name || d.domain?.name;
+            const verified = d.verified ?? d.domain?.verified;
+            const recs = d.verification || d.domain?.verification || [];
+            const cname = (d.cname || d.intendedCNAME || recs.find((r) => (r.type||"").toUpperCase()==="CNAME") || {}).value
+              || (recs[0] && recs[0].value) || "cname.vercel-dns.com";
+            console.log("domain=" + name);
+            console.log("verified=" + verified);
+            console.log("cname_target=" + cname);
+            console.log("verification=" + JSON.stringify(recs));
+          '
+          echo "Add DNS CNAME gifs -> cname.vercel-dns.com (or the cname_target above), DNS-only." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Add Hobby firewall rate-limit rule
+        if: github.event.inputs.action == 'firewall'
+        run: |
+          set -euo pipefail
+          prj="${{ secrets.VERCEL_PROJECT_ID }}"
+          if [ -z "$prj" ]; then
+            echo "VERCEL_PROJECT_ID secret is not set yet" >&2
+            exit 1
+          fi
+          mkdir -p /tmp/vercel-ops
+          cat > /tmp/vercel-ops/fw.json <<'JSON'
+          {
+            "action": "rules.insert",
+            "id": null,
+            "value": {
+              "name": "MCP per-IP rate limit",
+              "description": "Hobby included rule: 60 requests per 60s per IP on /mcp",
+              "active": true,
+              "conditionGroup": [
+                { "conditions": [{ "type": "path", "op": "pre", "value": "/mcp" }] }
+              ],
+              "action": {
+                "mitigate": {
+                  "action": "rate_limit",
+                  "rateLimit": {
+                    "algo": "fixed_window",
+                    "window": 60,
+                    "limit": 60,
+                    "keys": ["ip"],
+                    "action": "rate_limit"
+                  }
+                }
+              }
+            }
+          }
+          JSON
+          set +e
+          vercel api "/v1/security/firewall/config?projectId=${prj}" -X POST --input /tmp/vercel-ops/fw.json --scope "$SCOPE" --token "$VERCEL_TOKEN" --raw > /tmp/vercel-ops/fw-out.json 2>/tmp/vercel-ops/fw-err.txt
+          status=$?
+          set -e
+          echo "firewall_http_status_or_cli=$status"
+          if [ "$status" -ne 0 ]; then
+            echo "Firewall API insert failed. stderr:" >&2
+            cat /tmp/vercel-ops/fw-err.txt >&2
+            echo "body:" >&2
+            cat /tmp/vercel-ops/fw-out.json >&2 || true
+            exit 1
+          fi
+          echo "Firewall rule created (or accepted)." >> "$GITHUB_STEP_SUMMARY"
+          node -e 'const j=require("/tmp/vercel-ops/fw-out.json"); console.log("firewall_keys=" + Object.keys(j).join(","));'

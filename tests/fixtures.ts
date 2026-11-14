@@ -13,6 +13,8 @@ export interface PageOpts {
   categories?: string;
   description?: string;
   attributionRequired?: string;
+  /** Override Commons thumburl. `null` omits it (Commons sometimes does this for narrow GIFs). */
+  thumburl?: string | null;
 }
 
 export function commonsPage(o: PageOpts) {
@@ -36,7 +38,13 @@ export function commonsPage(o: PageOpts) {
         size: 123456,
         width: o.width ?? 400,
         height: o.height ?? 300,
-        thumburl: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/${file}/320px-${file}?utm_source=commons.wikimedia.org&utm_content=thumbnail`,
+        ...(o.thumburl === null
+          ? {}
+          : {
+              thumburl:
+                o.thumburl ??
+                `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/${file}/320px-${file}?utm_source=commons.wikimedia.org&utm_content=thumbnail`,
+            }),
         url: `https://upload.wikimedia.org/wikipedia/commons/a/ab/${file}?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original`,
         descriptionurl: `https://commons.wikimedia.org/wiki/${file}`,
         mime: o.mime ?? 'image/gif',
@@ -82,16 +90,16 @@ export function ovImage(id: string, extra: Record<string, unknown> = {}) {
 export const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 
-type Handler = (url: URL) => Response | Promise<Response>;
+type Handler = (url: URL, init?: RequestInit) => Response | Promise<Response>;
 
 /** A fetch mock that routes by host and records every requested URL. */
 export function mockFetch(routes: { commons?: Handler; openverse?: Handler }) {
   const calls: URL[] = [];
-  const fn = vi.fn(async (input: string | URL | Request) => {
+  const fn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
     calls.push(url);
-    if (url.hostname === 'commons.wikimedia.org' && routes.commons) return routes.commons(url);
-    if (url.hostname === 'api.openverse.org' && routes.openverse) return routes.openverse(url);
+    if (url.hostname === 'commons.wikimedia.org' && routes.commons) return routes.commons(url, init);
+    if (url.hostname === 'api.openverse.org' && routes.openverse) return routes.openverse(url, init);
     return new Response('not mocked', { status: 500 });
   });
   return { fetch: fn as unknown as typeof fetch, calls };

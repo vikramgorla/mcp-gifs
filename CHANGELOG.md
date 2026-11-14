@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-14
+
+### Fixed
+- Safety filter no longer blocks harmless medical and food phrases that
+  contain a denylisted word (for example "breast cancer", "breastfeeding",
+  "chicken breast"). Word-boundary matching is unchanged, and the same words
+  used alone or next to other blocked terms are still refused, so the safe
+  default is not weakened.
+- Commons previews for GIFs narrower than 320 px now use a real reduced
+  `/thumb/` rendition (for example 240 px for a 270 px original) instead of
+  the full original, which could be many megabytes.
+- In `source=auto`, the Openverse fallback times out after 2 s instead of 8 s
+  so a slow or hanging Openverse does not delay Commons results. The circuit
+  breaker still trips on that timeout. Explicit `source=openverse` keeps the
+  8 s budget.
+
 ### Changed
 - README: public endpoint is now live at
   `https://mcp-gifs.vikram-gorla.workers.dev/mcp` (Cloudflare Workers free plan).
@@ -33,4 +49,5 @@ All notable changes to this project are documented here. The format follows
   `Retry-After`, Openverse cool-down after failures).
 - Unit tests with mocked upstreams, live smoke script, GitHub Actions CI.
 
+[0.1.1]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/vikramgorla/mcp-gifs/releases/tag/v0.1.0

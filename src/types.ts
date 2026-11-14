@@ -8,7 +8,7 @@ export interface Gif {
   title: string;
   /** Direct URL of the original GIF file. */
   url: string;
-  /** Smaller preview/thumbnail URL (may be the original when the file is small). */
+  /** Smaller preview/thumbnail URL (a Commons thumb, not the original, whenever one can be built). */
   previewUrl: string;
   width: number;
   height: number;

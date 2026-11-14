@@ -3,7 +3,7 @@ import { blockedTerm } from './safety.js';
 import { commonsFrameCounts, commonsTitleFromUploadUrl, getCommonsFile, searchCommons } from './sources/wikimedia.js';
 import { getOpenverseImage, searchOpenverse } from './sources/openverse.js';
 import { toWords } from './text.js';
-import type { Gif, ResultCache, Safety, SearchParams, SearchResult, SourceName } from './types.js';
+import type { Gif, ResultCache, Safety, SearchParams, SearchResult, SourceName, SourceParam } from './types.js';
 
 export interface SearchDeps {
   cache?: ResultCache;
@@ -11,8 +11,18 @@ export interface SearchDeps {
   cacheTtlSeconds?: number;
 }
 
-const COMMONS_TIMEOUT_MS = 8000;
-const OPENVERSE_TIMEOUT_MS = 8000;
+export const COMMONS_TIMEOUT_MS = 8000;
+/** Used when the client asked for Openverse explicitly. */
+export const OPENVERSE_TIMEOUT_MS = 8000;
+/**
+ * Shorter cap in auto mode so a slow Openverse does not delay a Commons
+ * response. Timeouts still trip the circuit breaker.
+ */
+export const OPENVERSE_AUTO_TIMEOUT_MS = 2000;
+
+export function openverseTimeoutMs(source: SourceParam): number {
+  return source === 'auto' ? OPENVERSE_AUTO_TIMEOUT_MS : OPENVERSE_TIMEOUT_MS;
+}
 
 function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -75,7 +85,7 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
   if (cached) return { ...cached, query };
 
   const commonsOpts: FetchJsonOptions = { timeoutMs: COMMONS_TIMEOUT_MS, fetchImpl: deps.fetchImpl };
-  const ovOpts: FetchJsonOptions = { timeoutMs: OPENVERSE_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 };
+  const ovOpts: FetchJsonOptions = { timeoutMs: openverseTimeoutMs(source), fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 };
   const results: Gif[] = [];
   const seen = new Set<string>();
   const push = (gifs: Gif[]) => {

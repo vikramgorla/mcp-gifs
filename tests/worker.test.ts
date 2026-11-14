@@ -16,7 +16,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('worker HTTP surface', () => {
   it('serves /health and the landing page', async () => {
     const h = await worker.fetch(new Request('https://x.dev/health'), {});
-    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs' });
+    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs', version: '0.1.1' });
     const l = await worker.fetch(new Request('https://x.dev/'), {});
     expect(await l.text()).toContain('https://x.dev/mcp');
   });

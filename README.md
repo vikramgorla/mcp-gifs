@@ -102,7 +102,7 @@ Returns `structuredContent` plus a readable markdown summary. Real output for
       "id": "wikimedia:File:Rocket Launch (2).gif",
       "title": "Rocket Launch (2)",
       "url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif",
-      "previewUrl": "https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif",
+      "previewUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif",
       "width": 270,
       "height": 270,
       "fileSizeBytes": 6264294,
@@ -137,7 +137,7 @@ Found 2 GIFs for "rocket launch" (safety: safe; sources: wikimedia-commons).
 
 1. **Rocket Launch (2)**
    - GIF: https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif
-   - Preview: https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif
+   - Preview: https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif
    - 270×270, 6.0 MB, animated, 150 frames; source: wikimedia-commons
    - License: CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0) (attribution required)
    - Attribution: "Rocket Launch (2)" by Glosome, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0), via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif
@@ -148,8 +148,10 @@ Found 2 GIFs for "rocket launch" (safety: safe; sources: wikimedia-commons).
 Field notes:
 - `animated: true` means the Commons frame count is above 1. `null` means the
   source cannot tell us (non-Commons Openverse results).
-- `previewUrl` is a ~320 px wide rendition from Commons; for files narrower
-  than that it is the original file.
+- `previewUrl` is a reduced Commons thumbnail: about 320 px wide when the
+  original is larger, or a smaller `/thumb/` rendition (for example 240 px)
+  when the original is already narrower than 320 px, so a long animation that
+  is only a few hundred pixels wide is not served as a multi-megabyte preview.
 - `notes` explains fallbacks, blocked queries and upstream problems.
 
 ### `get_gif`
@@ -193,6 +195,10 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
   hate content; `safe` also blocks violence, gore, self-harm and hard drugs.
 - Openverse is never asked for mature content, and results flagged
   `mature` (always) or sensitive (`safe` mode) are dropped.
+- Medical and food phrases that contain an otherwise blocked word (for
+  example "breast cancer", "breastfeeding", "chicken breast") are allowed.
+  The same words used alone, or next to other blocked terms, are still
+  refused.
 - **Best effort only.** Wikimedia Commons has no official content rating, so
   filtering relies on keywords. It can miss things and can over-block. Please
   [open an issue](https://github.com/vikramgorla/mcp-gifs/issues) for misses.
@@ -206,7 +212,8 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and
   `Retry-After` is respected. Anonymous Openverse is limited to about 20
   requests/minute and 200/day per server IP and often returns 504s, so it is
-  only a fallback and pauses for 60 s after a failure.
+  only a fallback: in `source=auto` it is given a 2 s timeout (8 s when
+  Openverse is requested explicitly) and pauses for 60 s after a failure.
 
 ## Self-host / deploy
 

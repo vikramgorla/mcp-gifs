@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonsTitleFromUploadUrl, mapCommonsPage, searchCommons } from '../src/sources/wikimedia.js';
+import { commonsPreviewWidth, commonsThumbUrl, commonsTitleFromUploadUrl, mapCommonsPage, pickCommonsPreviewUrl, searchCommons } from '../src/sources/wikimedia.js';
 import { licenseName, mapOpenverse, openverseAllowed, searchOpenverse } from '../src/sources/openverse.js';
 import { commonsPage, commonsResponse, json, mockFetch, ovImage } from './fixtures.js';
 
@@ -128,5 +128,65 @@ describe('Openverse mapping', () => {
     expect(q.get('extension')).toBe('gif');
     expect(q.has('mature')).toBe(false);
     expect(Number(q.get('page_size'))).toBeLessThanOrEqual(20);
+  });
+});
+
+describe('Commons preview URLs', () => {
+  it('picks a thumbnail width strictly below the original, preferring 320', () => {
+    expect(commonsPreviewWidth(640)).toBe(320);
+    expect(commonsPreviewWidth(320)).toBe(240);
+    expect(commonsPreviewWidth(270)).toBe(240);
+    expect(commonsPreviewWidth(200)).toBe(160);
+    expect(commonsPreviewWidth(50)).toBe(40);
+    expect(commonsPreviewWidth(2)).toBe(1);
+    expect(commonsPreviewWidth(1)).toBeNull();
+  });
+
+  it('builds a hashed Commons thumb URL and preserves percent-encoding', () => {
+    expect(commonsThumbUrl('https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif', 240)).toBe(
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif',
+    );
+    expect(commonsThumbUrl('https://example.org/a.gif', 240)).toBeNull();
+  });
+
+  it('uses Commons thumburl when it is a distinct /thumb/ rendition', () => {
+    const provided = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Cat_jump.gif/320px-Cat_jump.gif';
+    expect(
+      pickCommonsPreviewUrl({
+        url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Cat_jump.gif',
+        thumburl: `${provided}?utm_source=commons.wikimedia.org`,
+        width: 400,
+      }),
+    ).toBe(provided);
+  });
+
+  it('synthesizes a smaller /thumb/ URL when Commons returns the original for a narrow GIF', () => {
+    const original = 'https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif';
+    // Commons sets thumburl = original when the file is already narrower than iiurlwidth (320).
+    expect(pickCommonsPreviewUrl({ url: original, thumburl: original, width: 270 })).toBe(
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif',
+    );
+    expect(pickCommonsPreviewUrl({ url: `${original}?utm_content=original`, width: 270 })).toBe(
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif',
+    );
+  });
+
+  it('maps a narrow multi-megabyte GIF to a reduced preview, not the original', () => {
+    const original = 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Rocket_Launch_(2).gif';
+    const c = mapCommonsPage(
+      commonsPage({
+        title: 'File:Rocket Launch (2).gif',
+        width: 270,
+        height: 270,
+        frameCount: 150,
+        thumburl: original, // Commons echoes the original when width < 320
+      }),
+    );
+    expect(c).not.toBeNull();
+    expect(c!.gif.url).toBe(original);
+    expect(c!.gif.previewUrl).not.toBe(original);
+    expect(c!.gif.previewUrl).toBe(
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Rocket_Launch_(2).gif/240px-Rocket_Launch_(2).gif',
+    );
   });
 });

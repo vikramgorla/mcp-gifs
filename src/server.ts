@@ -13,7 +13,7 @@ const gifSchema = z.object({
   id: z.string().describe('Pass to get_gif to re-fetch this GIF.'),
   title: z.string(),
   url: z.string().describe('Direct URL of the original animated GIF.'),
-  previewUrl: z.string().describe('Smaller preview (about 320px wide when available).'),
+  previewUrl: z.string().describe('Smaller preview thumbnail (about 320px wide, or a reduced Commons thumb when the original is already narrower).'),
   width: z.number(),
   height: z.number(),
   fileSizeBytes: z.number().nullable(),

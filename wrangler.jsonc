@@ -7,8 +7,11 @@
   "workers_dev": true,
   "observability": { "enabled": true },
   "vars": { "CACHE_TTL_SECONDS": "600" },
-  // Workers Rate Limiting binding (available on the free plan): 60 MCP POSTs per IP per minute, per location.
+  // RATE_LIMITER: 60 MCP POSTs per IP per 60s, per location.
+  // GLOBAL_RATE_LIMITER: 25 MCP requests per 60s on a constant key, per location.
+  // 25 is conservative because counters are per-location (see docs/DECISIONS.md).
   "ratelimits": [
-    { "name": "RATE_LIMITER", "namespace_id": "4711", "simple": { "limit": 60, "period": 60 } }
+    { "name": "RATE_LIMITER", "namespace_id": "4711", "simple": { "limit": 60, "period": 60 } },
+    { "name": "GLOBAL_RATE_LIMITER", "namespace_id": "4712", "simple": { "limit": 25, "period": 60 } }
   ]
 }

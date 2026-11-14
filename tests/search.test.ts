@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryCache } from '../src/cache.js';
 import { fetchJson, UpstreamError } from '../src/http.js';
-import { getGif, resetOpenverseCooldown, SearchFailedError, searchGifs } from '../src/search.js';
+import { getGif, OPENVERSE_AUTO_TIMEOUT_MS, OPENVERSE_TIMEOUT_MS, openverseTimeoutMs, resetOpenverseCooldown, SearchFailedError, searchGifs } from '../src/search.js';
 import { commonsPage, commonsResponse, json, mockFetch, ovImage } from './fixtures.js';
 
 const params = (over: Partial<Parameters<typeof searchGifs>[0]> = {}) => ({ query: 'cat', limit: 3, safety: 'safe' as const, source: 'auto' as const, ...over });
@@ -95,6 +95,39 @@ describe('searchGifs orchestration', () => {
     const r = await searchGifs(params({ query: '  CAT ' }), { fetchImpl: m.fetch, cache });
     expect(m.calls.length).toBe(n);
     expect(r.count).toBe(3);
+  });
+
+  it('allows a breast cancer query through to upstream', async () => {
+    const m = mockFetch({ commons: () => json(commonsResponse([commonsPage({ title: 'File:Ribbon.gif' })])) });
+    const r = await searchGifs(params({ query: 'breast cancer awareness' }), { fetchImpl: m.fetch });
+    expect(r.notes.join(' ')).not.toMatch(/blocked/);
+    expect(m.calls.length).toBeGreaterThan(0);
+    expect(r.results.map((g) => g.title)).toEqual(['Ribbon']);
+  });
+
+  it('uses a short Openverse timeout in auto mode and still trips the circuit breaker', async () => {
+    expect(openverseTimeoutMs('auto')).toBe(OPENVERSE_AUTO_TIMEOUT_MS);
+    expect(openverseTimeoutMs('openverse')).toBe(OPENVERSE_TIMEOUT_MS);
+    expect(OPENVERSE_AUTO_TIMEOUT_MS).toBeLessThan(OPENVERSE_TIMEOUT_MS);
+
+    const hangOnAbort = (_u: URL, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+      });
+    const m = mockFetch({
+      commons: () => json(commonsResponse([commonsPage({ title: 'File:C1.gif' })])),
+      openverse: hangOnAbort,
+    });
+    const started = Date.now();
+    const r = await searchGifs(params(), { fetchImpl: m.fetch });
+    expect(Date.now() - started).toBeLessThan(OPENVERSE_TIMEOUT_MS);
+    expect(r.count).toBe(1);
+    expect(r.notes.join(' ')).toMatch(new RegExp(`timed out after ${OPENVERSE_AUTO_TIMEOUT_MS} ms`));
+    const before = m.calls.filter((c) => c.hostname === 'api.openverse.org').length;
+    expect(before).toBe(1);
+    const r2 = await searchGifs(params({ query: 'dog' }), { fetchImpl: m.fetch });
+    expect(m.calls.filter((c) => c.hostname === 'api.openverse.org').length).toBe(before);
+    expect(r2.notes.join(' ')).toMatch(/cooling down/);
   });
 });
 

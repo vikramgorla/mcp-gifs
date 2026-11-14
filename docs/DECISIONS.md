@@ -67,8 +67,10 @@ is deliberately no unfiltered option.
   and hard-drug terms.
 
 **Honesty note.** Wikimedia Commons has no official content rating, so this is
-best effort. A denylist can both miss things and over-block (for example
-"breast cancer awareness" is blocked in every mode).
+best effort. A denylist can both miss things and over-block. v0.1.1 allows a
+small set of medical and food phrases (for example "breast cancer awareness",
+"breastfeeding", "chicken breast") by masking them before the denylist runs;
+standalone or sexual uses of the same words stay blocked.
 
 ## 4. Transport and SDK
 
@@ -107,23 +109,42 @@ makes at most 4 upstream subrequests (free limit: 50).
 ## 6. Rate limiting and caching
 
 - **Per-IP limit**: Workers Rate Limiting binding `RATE_LIMITER`, 60 MCP POSTs
-  per IP per 60 s per Cloudflare location (available on the free plan, counts
-  are approximate). Over the limit: HTTP 429 with a JSON-RPC error and
-  `Retry-After: 60`. IP is the only key available for a no-auth server.
+  per IP per 60 s per Cloudflare location (counts are approximate). Over the
+  limit: HTTP 429 with a JSON-RPC error and `Retry-After: 60`. IP is the only
+  key available for a no-auth server.
+- **Server-wide cap** (v0.1.1): a second binding, `GLOBAL_RATE_LIMITER`,
+  keyed on the constant `global`, checked **before** the per-IP limiter, at
+  **25 MCP requests per 60 s**. The account is on Workers Paid (10 million
+  requests/month included, $0.30 per extra million, billed account-wide).
+  The cap exists so this Worker alone cannot chew through that included
+  allowance; no account spending limits or other billing settings were
+  changed.
+  Counters on a Rate Limiting binding are **per location**, not one
+  worldwide total. A limit of 150/60 s would be about 6.5 million/month
+  only if it were a single counter; multiplied by many colos it could
+  exceed 10 million. 25/60 s is about 1.08 million/month per location,
+  which stays around 6.5 million/month if up to six locations are at the
+  cap and under the 10 million included allowance if up to nine are.
+  Landing and `/health` are not capped, so the version endpoint stays
+  reachable. Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
 - **Caching**: successful search results are cached in the Workers Cache API
   for 10 minutes (`CACHE_TTL_SECONDS`), keyed by normalised words, source,
   safety, limit and size cap. Partial results (a source failed or was skipped)
   are not cached. stdio uses an in-memory cache.
 - **Upstream politeness**: Wikimedia User-Agent policy
   `mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`, sequential
-  requests (no fan-out), 8 s timeouts, one retry on 429/503 only when
-  `Retry-After` is 2 s or less. After an Openverse failure the fallback is
-  skipped for 60 s (or the 429 `Retry-After`, up to 10 min) per isolate.
+  requests (no fan-out), 8 s Commons timeouts, one retry on 429/503 only when
+  `Retry-After` is 2 s or less. Openverse is 2 s in `source=auto` (so a hang
+  does not delay Commons results) and 8 s when requested explicitly. After an
+  Openverse failure the fallback is skipped for 60 s (or the 429
+  `Retry-After`, up to 10 min) per isolate.
 
 ## 7. Output shape
 
-Each result has `url` (original GIF), `previewUrl` (Commons 320 px rendition,
-which is the original for small files), `width`, `height`, `fileSizeBytes`,
+Each result has `url` (original GIF), `previewUrl` (a Commons `/thumb/`
+rendition: 320 px when the original is wider, otherwise a strictly smaller
+thumb so a narrow but long animation is not served as a multi-megabyte
+preview), `width`, `height`, `fileSizeBytes`,
 `animated`, `frameCount`, `source`, `pageUrl`, `author`, `authorUrl`,
 `license`, `licenseUrl`, `attributionRequired`, `attribution` and
 `description`. `utm_*` tracking parameters added by Commons are stripped.

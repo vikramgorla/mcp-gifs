@@ -5,6 +5,45 @@ import type { Gif, Safety } from '../types.js';
 
 export const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 const PREVIEW_WIDTH = 320;
+const PREVIEW_WIDTH_LADDER = [320, 240, 200, 160, 120, 80, 40] as const;
+/** Matches a hashed Commons original (not a /thumb/ rendition). */
+const UPLOAD_RE = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/([0-9a-f]\/[0-9a-f]{2}\/)([^/?#]+)$/;
+
+/** A thumbnail width strictly below `originalWidth`, preferring 320px. */
+export function commonsPreviewWidth(originalWidth: number): number | null {
+  if (!Number.isFinite(originalWidth) || originalWidth <= 1) return null;
+  for (const w of PREVIEW_WIDTH_LADDER) {
+    if (w < originalWidth) return w;
+  }
+  return originalWidth - 1;
+}
+
+/** Build a Commons `/thumb/` URL for an original upload, or null if the path is not hashed. */
+export function commonsThumbUrl(originalUrl: string, thumbWidth: number): string | null {
+  if (!Number.isInteger(thumbWidth) || thumbWidth < 1) return null;
+  const clean = cleanUrl(originalUrl).split('?')[0] ?? '';
+  const m = UPLOAD_RE.exec(clean);
+  if (!m) return null;
+  const [, hashPath, file] = m;
+  return `https://upload.wikimedia.org/wikipedia/commons/thumb/${hashPath}${file}/${thumbWidth}px-${file}`;
+}
+
+/**
+ * Prefer Commons' own thumburl when it is a distinct `/thumb/` rendition.
+ * When the file is already narrower than 320 px, Commons returns the original
+ * (which can still be many megabytes); synthesize a smaller hashed thumb URL
+ * instead so previews stay light.
+ */
+export function pickCommonsPreviewUrl(info: { url: string; thumburl?: string; width: number }): string {
+  const original = cleanUrl(info.url);
+  const provided = info.thumburl ? cleanUrl(info.thumburl) : '';
+  const isDistinctThumb = provided !== '' && provided !== original && /\/thumb\//.test(provided);
+  if (isDistinctThumb) return provided;
+  const width = commonsPreviewWidth(info.width);
+  const constructed = width !== null ? commonsThumbUrl(original, width) : null;
+  return constructed ?? (provided || original);
+}
+
 const EXTMETA_FIELDS = 'ObjectName|ImageDescription|Artist|LicenseShortName|LicenseUrl|AttributionRequired|Categories|UsageTerms';
 
 interface ExtValue { value?: string | number }
@@ -60,7 +99,7 @@ export function mapCommonsPage(page: Page): CommonsCandidate | null {
     id: `wikimedia:${page.title}`,
     title,
     url: cleanUrl(info.url),
-    previewUrl: cleanUrl(info.thumburl ?? info.url),
+    previewUrl: pickCommonsPreviewUrl(info),
     width: info.width,
     height: info.height,
     fileSizeBytes: info.size ?? null,
@@ -144,14 +183,13 @@ export async function getCommonsFile(title: string, safety: Safety, opts: FetchJ
   return c.gif;
 }
 
-const UPLOAD_RE = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/(?:[0-9a-f]\/[0-9a-f]{2}\/)([^/?#]+)$/;
 
 /** "https://upload.wikimedia.org/wikipedia/commons/7/78/Foo_bar.gif" -> "File:Foo bar.gif" */
 export function commonsTitleFromUploadUrl(url: string): string | null {
   const m = UPLOAD_RE.exec(url.split('?')[0] ?? '');
-  if (!m?.[1]) return null;
+  if (!m?.[2]) return null;
   try {
-    return `File:${decodeURIComponent(m[1]).replace(/_/g, ' ')}`;
+    return `File:${decodeURIComponent(m[2]).replace(/_/g, ' ')}`;
   } catch {
     return null;
   }

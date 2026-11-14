@@ -22,6 +22,13 @@ All notable changes to this project are documented here. The format follows
   breaker still trips on that timeout. Explicit `source=openverse` keeps the
   8 s budget.
 
+### Added
+- Server-wide MCP rate cap (`GLOBAL_RATE_LIMITER`, 25 requests per 60 s on a
+  constant `global` key, checked before the per-IP limiter) so this Worker
+  stays within the included 10 million requests/month on Workers Paid.
+  Binding counts are per Cloudflare location; 25 is a conservative value
+  for that. No account spending limits were changed.
+
 ### Changed
 - README: public endpoint is now live at
   `https://mcp-gifs.vikram-gorla.workers.dev/mcp` (Cloudflare Workers free plan).

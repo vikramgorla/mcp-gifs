@@ -50,7 +50,53 @@ describe('worker HTTP surface', () => {
     const env = { RATE_LIMITER: { limit: async () => ({ success: false }) } };
     const { res, msg } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }, env);
     expect(res.status).toBe(429);
-    expect(msg.error.message).toMatch(/Rate limit/);
+    expect(res.headers.get('Retry-After')).toBe('60');
+    expect(msg.error.message).toMatch(/per IP/);
+  });
+
+  it('enforces the global cap before the per-IP limiter', async () => {
+    const calls: string[] = [];
+    const env = {
+      GLOBAL_RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          calls.push(`global:${key}`);
+          return { success: false };
+        },
+      },
+      RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          calls.push(`ip:${key}`);
+          return { success: true };
+        },
+      },
+    };
+    const { res, msg } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }, env);
+    expect(res.status).toBe(429);
+    expect(res.headers.get('Retry-After')).toBe('60');
+    expect(msg.error.message).toMatch(/server-wide/);
+    expect(calls).toEqual(['global:global']);
+  });
+
+  it('checks the per-IP limiter only after the global cap allows the request', async () => {
+    const calls: string[] = [];
+    const env = {
+      GLOBAL_RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          calls.push(`global:${key}`);
+          return { success: true };
+        },
+      },
+      RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          calls.push(`ip:${key}`);
+          return { success: true };
+        },
+      },
+    };
+    const { res } = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }, env);
+    expect(res.status).toBe(200);
+    expect(calls[0]).toBe('global:global');
+    expect(calls[1]).toMatch(/^ip:mcp:/);
   });
 
   it('handles CORS preflight', async () => {

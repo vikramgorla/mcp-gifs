@@ -11,6 +11,7 @@ interface RateLimiter {
 }
 export interface Env {
   RATE_LIMITER?: RateLimiter;
+  GLOBAL_RATE_LIMITER?: RateLimiter;
   CACHE_TTL_SECONDS?: string;
 }
 
@@ -56,6 +57,16 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
     if (url.pathname === '/mcp' || url.pathname === '/mcp/') {
+      // Global cap first so this Worker alone cannot exhaust the account's
+      // included Workers Paid request allowance. Then the per-IP limiter.
+      if (env.GLOBAL_RATE_LIMITER) {
+        const { success } = await env.GLOBAL_RATE_LIMITER.limit({ key: 'global' });
+        if (!success) {
+          return withCors(
+            json({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Rate limit exceeded (server-wide). Please retry in a minute.' } }, 429, { 'Retry-After': '60' }),
+          );
+        }
+      }
       if (env.RATE_LIMITER && request.method === 'POST') {
         const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
         const { success } = await env.RATE_LIMITER.limit({ key: `mcp:${ip}` });

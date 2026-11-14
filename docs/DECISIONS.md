@@ -109,9 +109,24 @@ makes at most 4 upstream subrequests (free limit: 50).
 ## 6. Rate limiting and caching
 
 - **Per-IP limit**: Workers Rate Limiting binding `RATE_LIMITER`, 60 MCP POSTs
-  per IP per 60 s per Cloudflare location (available on the free plan, counts
-  are approximate). Over the limit: HTTP 429 with a JSON-RPC error and
-  `Retry-After: 60`. IP is the only key available for a no-auth server.
+  per IP per 60 s per Cloudflare location (counts are approximate). Over the
+  limit: HTTP 429 with a JSON-RPC error and `Retry-After: 60`. IP is the only
+  key available for a no-auth server.
+- **Server-wide cap** (v0.1.1): a second binding, `GLOBAL_RATE_LIMITER`,
+  keyed on the constant `global`, checked **before** the per-IP limiter, at
+  **25 MCP requests per 60 s**. The account is on Workers Paid (10 million
+  requests/month included, $0.30 per extra million, billed account-wide).
+  The cap exists so this Worker alone cannot chew through that included
+  allowance; no account spending limits or other billing settings were
+  changed.
+  Counters on a Rate Limiting binding are **per location**, not one
+  worldwide total. A limit of 150/60 s would be about 6.5 million/month
+  only if it were a single counter; multiplied by many colos it could
+  exceed 10 million. 25/60 s is about 1.08 million/month per location,
+  which stays around 6.5 million/month if up to six locations are at the
+  cap and under the 10 million included allowance if up to nine are.
+  Landing and `/health` are not capped, so the version endpoint stays
+  reachable. Over the limit: HTTP 429, JSON-RPC error, `Retry-After: 60`.
 - **Caching**: successful search results are cached in the Workers Cache API
   for 10 minutes (`CACHE_TTL_SECONDS`), keyed by normalised words, source,
   safety, limit and size cap. Partial results (a source failed or was skipped)

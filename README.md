@@ -205,8 +205,14 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
 ## Rate limits
 
-- Hosted endpoint: about **60 MCP requests per minute per IP** (per Cloudflare
-  location). Over the limit you get HTTP 429 with `Retry-After: 60`.
+- Hosted endpoint: a **server-wide cap of 25 MCP requests per minute** (checked
+  first) and about **60 MCP requests per minute per IP**. Both limits are
+  enforced per Cloudflare location — Workers Rate Limiting bindings are not a
+  single global counter — and return HTTP 429 with `Retry-After: 60`. The
+  server-wide cap is set conservatively so this Worker stays within the
+  included 10 million requests/month on the account's Workers Paid plan
+  even if a handful of locations are busy at once; it is not an account
+  spending limit.
 - Results are cached for 10 minutes, so repeated searches are cheap.
 - Upstream: Commons is queried sequentially with a descriptive User-Agent
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and

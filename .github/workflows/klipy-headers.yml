@@ -1,0 +1,47 @@
+# Shows the HTTP response headers KLIPY returns (status, caching, etc.), so we
+# can check that mcp-gifs caches KLIPY results only as long as KLIPY allows.
+# The API key comes from the KLIPY_API_KEY secret and is redacted from output.
+# Runs on demand, and on pull requests that change this file (it then posts
+# the headers as a PR comment).
+name: KLIPY headers
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['.github/workflows/klipy-headers.yml']
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  headers:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch KLIPY response headers
+        env:
+          KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
+        run: |
+          if [ -z "$KLIPY_API_KEY" ]; then echo "KLIPY_API_KEY secret is not set"; exit 1; fi
+          {
+            echo "### KLIPY response headers"
+            echo
+            for path in "gifs/search?q=facepalm&per_page=8&page=1&rating=g" "gifs/trending?per_page=8&page=1&rating=g" "gifs/search?q=facepalm&per_page=8&page=1&rating=g"; do
+              echo "**GET /api/v1/&lt;key&gt;/${path}** ($(date -u +%H:%M:%SZ))"
+              echo '```'
+              curl -sS -o /dev/null -D - --max-time 20 \
+                -H 'Accept: application/json' -H 'User-Agent: mcp-gifs-header-check' \
+                "https://api.klipy.com/api/v1/${KLIPY_API_KEY}/${path}" \
+                | tr -d '\r' | grep -iv '^set-cookie' | sed "s|${KLIPY_API_KEY}|<key>|g"
+              echo '```'
+              sleep 3
+            done
+          } > headers.md
+          cat headers.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Post as PR comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --body-file headers.md

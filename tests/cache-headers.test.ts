@@ -31,7 +31,8 @@ describe('freshnessSeconds (RFC 9111, shared cache)', () => {
     expect(freshnessSeconds(h({ 'Cache-Control': 'max-age=600, s-maxage=60' }), now)).toBe(60);
   });
   it('never caches no-store, no-cache or private', () => {
-    for (const cc of ['no-store', 'no-cache', 'private, max-age=600', 'max-age=600, no-store']) {
+    // The first value is exactly what KLIPY's API returned on 2026-11-16.
+    for (const cc of ['public, max-age=21600, s-maxage=21600, no-store', 'no-store', 'no-cache', 'private, max-age=600', 'max-age=600, no-store']) {
       expect(freshnessSeconds(h({ 'Cache-Control': cc }), now)).toBe(0);
     }
   });

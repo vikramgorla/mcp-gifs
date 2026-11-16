@@ -63,6 +63,16 @@ headers instead of a fixed ten-minute cache. Status:
   (search) and five-minute (trending) cache for KLIPY responses is gone;
   see the table above.
 
+**Observed KLIPY headers (2026-11-16, production key).** Search and Trending
+responses carry `Cache-Control: public, max-age=21600, s-maxage=21600,
+no-store`. Because `no-store` is present, RFC 9111 forbids storing the
+response, so mcp-gifs does **not** cache KLIPY results at all and every
+search goes to KLIPY. If KLIPY intends a 6-hour shared cache, removing
+`no-store` on their side is enough: mcp-gifs will then cache for
+`s-maxage` minus `Age` with no code change. The `KLIPY headers` workflow
+(`.github/workflows/klipy-headers.yml`, run it from the Actions tab) prints
+the current headers at any time.
+
 ## Email to KLIPY (draft)
 
 To: developers@klipy.com

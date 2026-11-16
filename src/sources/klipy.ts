@@ -1,4 +1,5 @@
-import { fetchJson, type FetchJsonOptions } from '../http.js';
+import { freshnessSeconds } from '../cachePolicy.js';
+import { fetchJson, fetchJsonWithHeaders, type FetchJsonOptions } from '../http.js';
 import { stripHtml, toWords, truncate } from '../text.js';
 import type { Gif, Safety } from '../types.js';
 
@@ -15,6 +16,8 @@ import type { Gif, Safety } from '../types.js';
  * - Media is never fetched, stored or re-hosted: results carry KLIPY's own
  *   media URLs, which clients load directly.
  * - KLIPY results are never mixed with another provider's results.
+ * - Caching follows KLIPY's response headers (Cache-Control / Expires):
+ *   searchKlipy and trendingKlipy return `cacheSeconds` for that.
  */
 export const KLIPY_API = 'https://api.klipy.com/api/v1';
 /** KLIPY accepts per_page 8-50. */
@@ -123,18 +126,21 @@ function collect(data: KlipyListResponse, limit: number, maxBytes: number): Gif[
 
 export interface KlipyQuery { apiKey: string; limit: number; safety: Safety; locale?: string; maxBytes?: number }
 
-export async function searchKlipy(query: string, q: KlipyQuery, opts: FetchJsonOptions): Promise<Gif[]> {
+/** KLIPY results plus how long KLIPY's response headers allow them to be cached (0 = do not cache). */
+export interface KlipyList { gifs: Gif[]; cacheSeconds: number }
+
+export async function searchKlipy(query: string, q: KlipyQuery, opts: FetchJsonOptions): Promise<KlipyList> {
   const words = toWords(query);
-  if (words.length === 0) return [];
+  if (words.length === 0) return { gifs: [], cacheSeconds: 0 };
   const p = listParams(q.limit, q.safety, q.locale);
   p.set('q', words.join(' '));
-  const data = await fetchJson<KlipyListResponse>(`${base(q.apiKey)}/search?${p}`, opts);
-  return collect(data, q.limit, q.maxBytes ?? Infinity);
+  const { data, headers } = await fetchJsonWithHeaders<KlipyListResponse>(`${base(q.apiKey)}/search?${p}`, opts);
+  return { gifs: collect(data, q.limit, q.maxBytes ?? Infinity), cacheSeconds: freshnessSeconds(headers) };
 }
 
-export async function trendingKlipy(q: KlipyQuery, opts: FetchJsonOptions): Promise<Gif[]> {
-  const data = await fetchJson<KlipyListResponse>(`${base(q.apiKey)}/trending?${listParams(q.limit, q.safety, q.locale)}`, opts);
-  return collect(data, q.limit, q.maxBytes ?? Infinity);
+export async function trendingKlipy(q: KlipyQuery, opts: FetchJsonOptions): Promise<KlipyList> {
+  const { data, headers } = await fetchJsonWithHeaders<KlipyListResponse>(`${base(q.apiKey)}/trending?${listParams(q.limit, q.safety, q.locale)}`, opts);
+  return { gifs: collect(data, q.limit, q.maxBytes ?? Infinity), cacheSeconds: freshnessSeconds(headers) };
 }
 
 export async function getKlipyGif(slug: string, apiKey: string, opts: FetchJsonOptions): Promise<Gif | null> {

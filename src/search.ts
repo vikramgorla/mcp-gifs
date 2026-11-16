@@ -89,12 +89,14 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
   }
 
   const klipyKey = deps.klipyApiKey || undefined;
-  const cacheKey = `search:v2:${source}:${klipyKey ? 'k' : '-'}:${params.locale ?? ''}:${safety}:${limit}:${maxBytes}:${words.join(' ')}`;
+  const cacheKey = `search:v3:${source}:${klipyKey ? 'k' : '-'}:${params.locale ?? ''}:${safety}:${limit}:${maxBytes}:${words.join(' ')}`;
   const cached = (await deps.cache?.get(cacheKey)) as SearchResult | undefined;
   if (cached) return { ...cached, query };
 
   let failures = 0;
   let degraded = false;
+  /** When KLIPY was consulted, the open-source fallback may not outlive KLIPY's own cache lifetime. */
+  let klipyCacheCap = Infinity;
 
   // KLIPY (reaction/meme GIFs, the kind chat apps show) goes first when configured.
   // Its results are returned on their own, never mixed with open-licence results.
@@ -104,13 +106,15 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
   if (klipyKey && (source === 'auto' || source === 'klipy')) {
     sourcesQueried.push('klipy');
     try {
-      const k = await searchKlipy(query, { apiKey: klipyKey, limit, safety, locale: params.locale, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
+      const { gifs: k, cacheSeconds } = await searchKlipy(query, { apiKey: klipyKey, limit, safety, locale: params.locale, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
       if (k.length > 0 || source === 'klipy') {
         const klipyNotes = k.length ? [KLIPY_NOTE] : ['No matching GIFs found on KLIPY. Try different keywords.'];
         const out: SearchResult = { ...base, count: k.length, results: k, sourcesQueried, notes: klipyNotes };
-        await deps.cache?.put(cacheKey, out, deps.cacheTtlSeconds ?? 600);
+        // Cache only as long as KLIPY's response headers allow; no fixed TTL.
+        if (cacheSeconds > 0) await deps.cache?.put(cacheKey, out, cacheSeconds);
         return out;
       }
+      klipyCacheCap = cacheSeconds;
       notes.push('KLIPY had no matches; showing openly licensed GIFs instead.');
     } catch (err) {
       if (source === 'klipy') throw new SearchFailedError(`KLIPY unavailable: ${describeError(err)}.`);
@@ -164,7 +168,8 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
   if (results.length === 0) notes.push('No matching animated GIFs found. Try broader or different keywords.');
 
   const out: SearchResult = { ...base, count: results.length, results, sourcesQueried, notes };
-  if (failures === 0 && !degraded) await deps.cache?.put(cacheKey, out, deps.cacheTtlSeconds ?? 600);
+  const ttl = Math.min(deps.cacheTtlSeconds ?? 600, klipyCacheCap);
+  if (failures === 0 && !degraded && ttl > 0) await deps.cache?.put(cacheKey, out, ttl);
   return out;
 }
 
@@ -188,16 +193,18 @@ export async function trendingGifs(params: TrendingParams, deps: SearchDeps = {}
   const base = { query: '', safety: params.safety };
   if (!deps.klipyApiKey) return { ...base, count: 0, results: [], sourcesQueried: [], notes: [KLIPY_NOT_CONFIGURED] };
   const maxBytes = params.maxBytes ?? Infinity;
-  const cacheKey = `trending:v1:${params.locale ?? ''}:${params.safety}:${params.limit}:${maxBytes}`;
+  const cacheKey = `trending:v2:${params.locale ?? ''}:${params.safety}:${params.limit}:${maxBytes}`;
   const cached = (await deps.cache?.get(cacheKey)) as SearchResult | undefined;
   if (cached) return cached;
   let results: Gif[];
+  let cacheSeconds: number;
   try {
-    results = await trendingKlipy({ apiKey: deps.klipyApiKey, ...params, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
+    ({ gifs: results, cacheSeconds } = await trendingKlipy({ apiKey: deps.klipyApiKey, ...params, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 }));
   } catch (err) {
     throw new SearchFailedError(`KLIPY unavailable: ${describeError(err)}.`);
   }
   const out: SearchResult = { ...base, count: results.length, results, sourcesQueried: ['klipy'], notes: [KLIPY_NOTE] };
-  await deps.cache?.put(cacheKey, out, Math.min(deps.cacheTtlSeconds ?? 600, 300));
+  // Cache only as long as KLIPY's response headers allow; no fixed TTL.
+  if (cacheSeconds > 0) await deps.cache?.put(cacheKey, out, cacheSeconds);
   return out;
 }

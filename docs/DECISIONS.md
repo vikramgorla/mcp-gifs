@@ -158,7 +158,8 @@ their own copy to `workers.dev`. Worker name `mcp-gifs`,
 - **Self-host (Workers):** `RATE_LIMITER` (60 MCP POSTs / 60 s / IP) and
   `GLOBAL_RATE_LIMITER` (25 / 60 s, key `global`), both per Cloudflare
   location, as in v0.1.1.
-- **Caching**: successful search results are cached for 10 minutes, keyed
+- **Caching**: successful open-licence search results are cached for 10
+  minutes (KLIPY results follow KLIPY's response headers; see decision 9), keyed
   by normalised words, source, safety, limit and size cap. On Vercel this
   is an in-memory map (per isolate); on Workers it is the Cache API.
   `/` and `/health` also send `Cache-Control` so the CDN can reuse them.
@@ -219,6 +220,12 @@ production keys are free after approval, with attribution required.
 - The key is read from the environment only, sits in the URL path as KLIPY
   requires, and is never accepted from clients or echoed in errors.
 - No `customer_id` is sent, so no ads are requested.
+- Caching follows KLIPY's response headers (v0.3.1, after KLIPY's feedback):
+  `s-maxage`/`max-age` minus `Age`, else `Expires`; nothing is cached on
+  `no-store`, `no-cache`, `private` or when no freshness headers are sent.
+  A fallback to open sources after a KLIPY miss is cached no longer than
+  KLIPY's response. The earlier fixed 10-minute (search) / 5-minute
+  (trending) cache for KLIPY was removed.
 
 **Requests and open items (2026-11-16).** Written approval for server-side
 use and a production key have been requested from KLIPY. An MCP server cannot

@@ -1,6 +1,6 @@
 {
   "name": "mcp-gifs",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Public, no-auth MCP server for GIF search, powered by KLIPY, with openly licensed GIFs from Wikimedia Commons and Openverse.",
   "type": "module",

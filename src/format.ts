@@ -26,7 +26,12 @@ export function searchToMarkdown(r: SearchResult): string {
   if (r.notes.length) lines.push(...r.notes.map((n) => `> ${n}`));
   if (r.results.length) {
     lines.push('', ...r.results.map((g, i) => gifToMarkdown(g, i + 1)));
-    lines.push('', 'When you show a GIF, include its attribution line and keep the license link.');
+    lines.push(
+      '',
+      r.results.some((g) => g.source === 'klipy')
+        ? 'When you show these GIFs, show "Powered by KLIPY" with them, keep this order and load each GIF from the URL given.'
+        : 'When you show a GIF, include its attribution line and keep the license link.',
+    );
   }
   return lines.join('\n');
 }

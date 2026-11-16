@@ -11,6 +11,12 @@ All notable changes to this project are documented here. The format follows
   dark), badges, a homepage screenshot, quick setup per client, a tools
   overview, and friendlier section names. Reference details moved into
   expandable sections.
+- Docs, decision record and package keywords present KLIPY as the primary
+  GIF search provider. The KLIPY key is held only by the server operator;
+  end users still need no auth. If no key is set, search uses Wikimedia
+  Commons and Openverse only. Decision 9 notes that written approval for
+  server-side use and a production key have been requested from KLIPY
+  (2026-11-16).
 
 ## [0.3.0] - 2026-11-16
 

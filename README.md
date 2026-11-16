@@ -142,6 +142,10 @@ Three tools. Ask for a vibe, get GIFs.
 <details>
 <summary><b>See a full response</b> (real output from an open-licence search)</summary>
 
+On the public server most searches come back from KLIPY with `source: "klipy"`
+and the same fields (plus `mp4Url` and `webpUrl`). This example is an
+open-licence result because it shows every license field.
+
 Returns `structuredContent` plus a readable markdown summary. Real output for
 `{"query": "rocket launch", "limit": 2}` (2026-11-14):
 

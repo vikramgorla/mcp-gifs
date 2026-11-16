@@ -386,4 +386,9 @@ Design rationale: [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## License
 
-[MIT](LICENSE) for the code. GIFs returned by the server keep their own licenses.
+[MIT](LICENSE) for the code. GIFs returned by the server keep their own
+licenses (KLIPY results are under [KLIPY's terms](https://klipy.com/support/terms-services)).
+The landing page uses the Bricolage Grotesque typeface under the
+[SIL Open Font License 1.1](docs/fonts/OFL-BricolageGrotesque.txt); it is
+served from this server at `/assets/bricolage-v1.woff2`, so the page makes no
+third-party requests apart from loading GIFs from their providers.

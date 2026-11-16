@@ -18,9 +18,12 @@ All notable changes to this project are documented here. The format follows
   Content filtering for KLIPY is its `rating` parameter and Partner Panel.
 - KLIPY attribution line is now `"<title>" · Powered by KLIPY · <page>`, and
   every KLIPY response's `notes` spell out KLIPY's display rules for agents.
-- New landing page: a live GIF search with a "Search KLIPY" box and "Powered
-  by KLIPY" under it, client setup tabs, tool list and source credits. Light
-  and dark themes, no third-party requests except KLIPY media.
+- New playful landing page in a sticker-sheet style: a live GIF picker with
+  a "Search KLIPY" box and "Powered by KLIPY" under it, example-search
+  stickers, client setup tabs, tool cards and source credits. Light and dark
+  themes, mobile first (no sideways scrolling down to 320 px wide), keyboard
+  accessible, honours reduced motion. Uses the self-hosted Bricolage
+  Grotesque font (SIL OFL), served at `/assets/bricolage-v1.woff2`.
 - Docs: README rewritten around KLIPY; new `docs/KLIPY.md` maps each KLIPY
   requirement to code and tests and drafts the approval request.
 

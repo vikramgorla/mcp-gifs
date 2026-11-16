@@ -139,3 +139,15 @@ describe('landing page attribution', () => {
     expect(html).toContain('placeholder="Search GIFs"');
   });
 });
+
+describe('font asset', () => {
+  it('serves the self-hosted font with a long cache', async () => {
+    const { createHttpApp } = await import('../src/app.js');
+    const { FONT_PATH } = await import('../src/landing.js');
+    const res = await createHttpApp().fetch(new Request(`https://x.dev${FONT_PATH}`));
+    expect(res.headers.get('Content-Type')).toBe('font/woff2');
+    expect(res.headers.get('Cache-Control')).toContain('immutable');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(String.fromCharCode(...bytes.slice(0, 4))).toBe('wOF2');
+  });
+});

@@ -1,4 +1,4 @@
-# Design decisions (v0.1.0)
+# Design decisions
 
 Short records of the choices behind the first version, with the reasons.
 Research and live checks were done on 2026-11-14.
@@ -7,6 +7,9 @@ Research and live checks were done on 2026-11-14.
 
 **Decision.** Use the Wikimedia Commons Action API as the primary source and
 Openverse as a fallback. Do not use Tenor, GIPHY or Klipy.
+
+> **Superseded in part (v0.3.0):** KLIPY is now the first source when a key is
+> configured, under KLIPY's integration rules. See decision 6.
 
 **Why.**
 - The server must be public and need **no auth**, so sources must work without
@@ -181,33 +184,36 @@ The package has a `bin` for local stdio use but is `private` and **not
 published** to npm or any MCP registry in v0.1.0; that needs the owner's
 explicit go-ahead.
 
-## 6. Optional KLIPY provider (unreleased)
+## 6. KLIPY as the first source (v0.3.0)
 
-**Decision.** Add [KLIPY](https://klipy.com/developers) as an optional,
-operator-configured provider (`KLIPY_API_KEY`). Without the key the server
-behaves exactly as before.
+**Decision.** Use [KLIPY](https://klipy.com) for reaction/meme GIFs when
+`KLIPY_API_KEY` is set (it is set on the public instance). Wikimedia Commons
+and Openverse remain as a separate fallback.
 
-**Why.** Users expect the reaction/meme GIFs that WhatsApp and Microsoft
-Teams pickers show. Those come from commercial libraries (Teams uses GIPHY;
-WhatsApp moved its Tenor users to GIPHY after Tenor's API shut down on
-2026-06-30 and has tested KLIPY). Openly licensed sources cannot cover that.
-GIPHY's free beta keys are capped at 100 calls/hour and its unlimited
-production keys are paid, which does not fit a free public server. KLIPY
-offers free production keys (after approval) with attribution required.
+**Why.** Users expect the GIFs that WhatsApp and Microsoft Teams pickers show.
+Those come from commercial libraries (Teams uses GIPHY; WhatsApp moved its
+Tenor users to GIPHY after Tenor's API shut down on 2026-06-30 and has tested
+KLIPY). Openly licensed sources cannot cover that. GIPHY's free beta keys are
+capped at 100 calls/hour and its unlimited production keys are paid. KLIPY
+production keys are free after approval, with attribution required.
 
-**How.**
-- KLIPY results are returned on their own and never interleaved with
-  Commons/Openverse results; `auto` falls back to the open sources only when
-  KLIPY has no match or fails.
+**How we follow KLIPY's rules** (details and evidence: [KLIPY.md](KLIPY.md)):
+- Search and Trending results keep KLIPY's order and composition. v0.2 ran
+  our keyword denylist on KLIPY titles/tags and dropped items that exceeded
+  the size cap; v0.3.0 removed both, because KLIPY requires results not to be
+  filtered or removed locally. Filtering is KLIPY's `rating` parameter plus
+  the Partner Panel. The keyword check still runs on the query.
+- KLIPY results are never mixed with other providers; `auto` falls back to
+  the open sources only when KLIPY has no match or fails.
+- Media is never fetched, stored or re-hosted; clients load KLIPY's URLs.
+- "Powered by KLIPY" appears on the landing page (under a "Search KLIPY"
+  box) and in every KLIPY result's attribution, notes and tool text.
 - The key is read from the environment only, sits in the URL path as KLIPY
   requires, and is never accepted from clients or echoed in errors.
-- No `customer_id` is sent, so KLIPY's ad items are not requested; any item
-  whose `type` is not `gif` is dropped anyway.
-- `safety` maps to KLIPY's `rating` (`g` / `pg-13`) and the keyword denylist
-  still runs on titles and tags.
+- No `customer_id` is sent, so no ads are requested.
 
-**Open items.** Before enabling KLIPY on the public instance: obtain a
-production key, confirm with KLIPY that a public MCP server is an accepted
-integration, and confirm the attribution text and page URL format
-(`https://klipy.com/gifs/<slug>` is assumed). The share-trigger endpoint is
-not called, because an MCP server cannot know whether a GIF was actually sent.
+**Open items.** KLIPY's requirements call for written approval of
+server-side calls and response caching; an MCP server cannot call KLIPY from
+the end user's device. The request (and the production key request) is
+drafted in [KLIPY.md](KLIPY.md). The share-trigger endpoint is not called
+because a server cannot see whether the user actually sent a GIF.

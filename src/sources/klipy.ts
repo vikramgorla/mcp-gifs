@@ -1,20 +1,29 @@
 import { fetchJson, type FetchJsonOptions } from '../http.js';
-import { isGifAllowed } from '../safety.js';
 import { stripHtml, toWords, truncate } from '../text.js';
 import type { Gif, Safety } from '../types.js';
 
 /**
- * KLIPY GIF API (https://klipy.com/docs). The API key is part of the path:
+ * KLIPY GIF API (https://docs.klipy.com). The API key is part of the path:
  * `https://api.klipy.com/api/v1/{KEY}/gifs/search`. The key comes only from
  * the operator's environment (KLIPY_API_KEY), never from MCP clients, and it
  * is never echoed back: errors from fetchJson carry the status, not the URL.
+ *
+ * KLIPY integration rules this module follows (see docs/KLIPY.md):
+ * - Search and Trending results are returned in KLIPY's order and are not
+ *   reordered, filtered or suppressed here. Content filtering is KLIPY's
+ *   `rating` parameter plus the filters set in the KLIPY Partner Panel.
+ * - Media is never fetched, stored or re-hosted: results carry KLIPY's own
+ *   media URLs, which clients load directly.
+ * - KLIPY results are never mixed with another provider's results.
  */
 export const KLIPY_API = 'https://api.klipy.com/api/v1';
 /** KLIPY accepts per_page 8-50. */
 const MIN_PER_PAGE = 8;
 const MAX_PER_PAGE = 50;
 
-export const KLIPY_ATTRIBUTION_URL = 'https://klipy.com/attribution';
+export const KLIPY_ATTRIBUTION_URL = 'https://docs.klipy.com/attribution';
+export const KLIPY_POWERED_BY = 'Powered by KLIPY';
+export const KLIPY_SEARCH_PLACEHOLDER = 'Search KLIPY';
 
 interface KlipyFormat { url: string; width?: number; height?: number; size?: number }
 interface KlipyRendition { gif?: KlipyFormat; webp?: KlipyFormat; mp4?: KlipyFormat; jpg?: KlipyFormat; webm?: KlipyFormat }
@@ -38,17 +47,24 @@ export function isKlipyLocale(locale: string): boolean {
   return /^[a-z]{2}_[A-Z]{2}$/.test(locale);
 }
 
-/** Largest GIF rendition that fits within maxBytes (unknown sizes count as fitting). */
+/**
+ * Largest GIF rendition that fits within maxBytes (unknown sizes count as
+ * fitting). If none fits, the smallest one is used: KLIPY results are never
+ * dropped for size, so the result set stays as KLIPY composed it.
+ */
 function pickRendition(file: NonNullable<KlipyItem['file']>, maxBytes: number): { r: KlipyRendition; gif: KlipyFormat } | null {
+  let smallest: { r: KlipyRendition; gif: KlipyFormat } | null = null;
   for (const key of ['hd', 'md', 'sm', 'xs'] as const) {
     const r = file[key];
-    if (r?.gif?.url && (r.gif.size ?? 0) <= maxBytes) return { r, gif: r.gif };
+    if (!r?.gif?.url) continue;
+    if ((r.gif.size ?? 0) <= maxBytes) return { r, gif: r.gif };
+    smallest = { r, gif: r.gif };
   }
-  return null;
+  return smallest;
 }
 
 export function mapKlipy(item: KlipyItem, maxBytes = Infinity): Gif | null {
-  // Ads and other non-GIF entries can appear in KLIPY feeds; keep only GIF items with files.
+  // No customer_id is sent, so KLIPY returns no ad items; anything without GIF files cannot be shown as a GIF.
   if (!item.slug || !item.file || (item.type && item.type !== 'gif')) return null;
   const picked = pickRendition(item.file, maxBytes);
   if (!picked) return null;
@@ -75,13 +91,9 @@ export function mapKlipy(item: KlipyItem, maxBytes = Infinity): Gif | null {
     license: 'KLIPY API terms',
     licenseUrl: KLIPY_ATTRIBUTION_URL,
     attributionRequired: true,
-    attribution: `"${title}" via KLIPY (Powered by KLIPY): ${pageUrl}`,
+    attribution: `"${title}" · ${KLIPY_POWERED_BY} · ${pageUrl}`,
     description: null,
   };
-}
-
-function allowed(item: KlipyItem, safety: Safety): boolean {
-  return isGifAllowed({ title: item.title ?? '', description: null, categories: item.tags ?? [] }, safety);
 }
 
 function base(apiKey: string): string {
@@ -90,7 +102,7 @@ function base(apiKey: string): string {
 
 function listParams(limit: number, safety: Safety, locale?: string): URLSearchParams {
   const p = new URLSearchParams({
-    per_page: String(Math.min(MAX_PER_PAGE, Math.max(MIN_PER_PAGE, limit * 2))),
+    per_page: String(Math.min(MAX_PER_PAGE, Math.max(MIN_PER_PAGE, limit))),
     page: '1',
     rating: klipyRating(safety),
   });
@@ -98,10 +110,10 @@ function listParams(limit: number, safety: Safety, locale?: string): URLSearchPa
   return p;
 }
 
-function collect(data: KlipyListResponse, limit: number, safety: Safety, maxBytes: number): Gif[] {
+/** First `limit` items of KLIPY's list, in KLIPY's order. */
+function collect(data: KlipyListResponse, limit: number, maxBytes: number): Gif[] {
   const out: Gif[] = [];
   for (const item of data.data?.data ?? []) {
-    if (!allowed(item, safety)) continue;
     const g = mapKlipy(item, maxBytes);
     if (g) out.push(g);
     if (out.length >= limit) break;
@@ -117,19 +129,19 @@ export async function searchKlipy(query: string, q: KlipyQuery, opts: FetchJsonO
   const p = listParams(q.limit, q.safety, q.locale);
   p.set('q', words.join(' '));
   const data = await fetchJson<KlipyListResponse>(`${base(q.apiKey)}/search?${p}`, opts);
-  return collect(data, q.limit, q.safety, q.maxBytes ?? Infinity);
+  return collect(data, q.limit, q.maxBytes ?? Infinity);
 }
 
 export async function trendingKlipy(q: KlipyQuery, opts: FetchJsonOptions): Promise<Gif[]> {
   const data = await fetchJson<KlipyListResponse>(`${base(q.apiKey)}/trending?${listParams(q.limit, q.safety, q.locale)}`, opts);
-  return collect(data, q.limit, q.safety, q.maxBytes ?? Infinity);
+  return collect(data, q.limit, q.maxBytes ?? Infinity);
 }
 
-export async function getKlipyGif(slug: string, apiKey: string, safety: Safety, opts: FetchJsonOptions): Promise<Gif | null> {
+export async function getKlipyGif(slug: string, apiKey: string, opts: FetchJsonOptions): Promise<Gif | null> {
   if (!/^[A-Za-z0-9_-]{1,200}$/.test(slug)) return null;
   const res = await fetchJson<KlipyItemResponse>(`${base(apiKey)}/${slug}`, opts);
   const d = res.data;
   const item = d && 'data' in d && d.data && !('file' in d) ? d.data : (d as KlipyItem | undefined);
-  if (!item || !allowed(item, safety)) return null;
+  if (!item) return null;
   return mapKlipy(item);
 }

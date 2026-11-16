@@ -1,25 +1,31 @@
 # mcp-gifs
 
 A public, **no-auth** [Model Context Protocol](https://modelcontextprotocol.io)
-server that lets AI agents find **openly licensed animated GIFs** by keyword.
-Agents call `search_gifs` with a few words and get back direct GIF URLs,
-previews, dimensions, the license and a ready-made attribution line.
+server that lets AI agents search GIFs the way chat apps do. Agents call
+`search_gifs` with a few words and get back direct GIF links, previews,
+dimensions and a ready-made credit line for each result.
 
-- **Sources:** [Wikimedia Commons](https://commons.wikimedia.org) (primary) and
-  [Openverse](https://openverse.org) (fallback). No API keys needed.
-- **Optional KLIPY:** set `KLIPY_API_KEY` and the server also returns the
-  reaction/meme GIFs that chat-app GIF pickers show, from
-  [KLIPY](https://klipy.com/developers), plus a `trending_gifs` tool. See
-  [KLIPY (optional)](#klipy-optional).
-- **Transports:** stateless Streamable HTTP at `/mcp` (Vercel Edge Function) and
-  stdio for local use.
-- **Safety filter on by default.** Results are openly licensed, so they skew
-  documentary/educational rather than reaction memes.
+**GIF search is powered by [KLIPY](https://klipy.com).**
+
+- **Sources:** [KLIPY](https://klipy.com) for reaction/meme GIFs (the kind
+  WhatsApp and Teams pickers show), with openly licensed GIFs from
+  [Wikimedia Commons](https://commons.wikimedia.org) and
+  [Openverse](https://openverse.org) as a separate fallback. Results from
+  different providers are never mixed in one list.
+- **Tools:** `search_gifs`, `trending_gifs` (KLIPY) and `get_gif`.
+- **Transports:** stateless Streamable HTTP at `/mcp` (Vercel Edge Function)
+  and stdio for local use.
+- **Attribution built in:** KLIPY results carry "Powered by KLIPY"; open
+  results carry author, license and source. See
+  [KLIPY integration and attribution](#klipy-integration-and-attribution).
+- **Safety on by default:** unsafe queries are refused, and KLIPY is asked for
+  G-rated content unless the client picks `moderate`.
 
 > **Public endpoint:** `https://gifs.vikram-gorla.com/mcp`
-> (no auth, no API key; landing page at <https://gifs.vikram-gorla.com/>,
-> health check at `/health`). Hosted on Vercel Hobby. To run your own copy,
-> see [Self-host / deploy](#self-host--deploy).
+> (no auth, no API key for clients; landing page with a live
+> "Search KLIPY" demo at <https://gifs.vikram-gorla.com/>, health check at
+> `/health`). Hosted on Vercel Hobby. To run your own copy, see
+> [Self-host / deploy](#self-host--deploy).
 
 ## Connect
 
@@ -91,7 +97,7 @@ your machine.
 | `query`       | string (1-200 chars)                   | required | Keywords, e.g. `cat`, `rocket launch`. English works best. |
 | `limit`       | integer 1-25                           | `8`      | Maximum results. |
 | `safety`      | `safe` \| `moderate`                   | `safe`   | See [Safety](#safety). No unfiltered mode. |
-| `source`      | `auto` \| `klipy` \| `wikimedia` \| `openverse` | `auto` | `auto` = KLIPY first when configured; otherwise (or when KLIPY has no match) Commons first, Openverse fills gaps. |
+| `source`      | `auto` \| `klipy` \| `wikimedia` \| `openverse` | `auto` | `auto` = KLIPY first; if KLIPY has no match (or no key is configured), Commons first and Openverse fills gaps. |
 | `max_size_mb` | number 0.1-100                         | `10`     | Skip larger files (Commons GIFs range from 1 KB to 40+ MB). |
 | `locale`      | string like `en_US`                    | none     | KLIPY only: localized results. |
 
@@ -182,39 +188,75 @@ Returns `{ "found": boolean, "gif": <same shape as above> | null }`.
 Same output shape as `search_gifs`, with `query: ""`. This is the default tab
 of a chat-app GIF picker.
 
-## KLIPY (optional)
+## KLIPY integration and attribution
 
-WhatsApp and Microsoft Teams show GIFs from commercial libraries (GIPHY, and
-KLIPY in some WhatsApp builds), not openly licensed ones. To get that kind of
-result, give the server a [KLIPY](https://klipy.com/developers) API key:
+GIF search on the public instance is **powered by [KLIPY](https://klipy.com)**.
+This section is how mcp-gifs follows KLIPY's
+[attribution guidelines](https://docs.klipy.com/attribution) and
+[integration requirements](https://docs.klipy.com/integration-requirements).
+Requirement-by-requirement evidence (code, tests, screenshots) is in
+[docs/KLIPY.md](docs/KLIPY.md).
+
+**What users and agents see**
+
+- The landing page has a live GIF search whose box says **"Search KLIPY"**,
+  with **"Powered by KLIPY"** (linking to klipy.com) directly under it, and a
+  "GIF search powered by KLIPY" credit in the footer.
+- Every KLIPY result has `source: "klipy"` and an `attribution` line that
+  contains **"Powered by KLIPY"**. The result `notes`, the tool descriptions
+  and the server instructions tell agents to show it with the GIFs, to keep
+  KLIPY's order, to load media from the returned URLs, not to mix KLIPY GIFs
+  with other providers, and to label any search box "Search KLIPY".
+
+**How results are handled**
+
+- **Order and composition:** Search and Trending results are returned in
+  KLIPY's order. mcp-gifs does not reorder, filter or replace them. Content
+  filtering is KLIPY's `rating` parameter (`safe` → `g`, `moderate` →
+  `pg-13`) plus whatever is configured in the KLIPY Partner Panel. If a size
+  cap rules out the larger renditions, the smallest one is used instead of
+  dropping the GIF.
+- **No mixing:** a response holds KLIPY results or open-licence results,
+  never both. Open sources are used only when KLIPY has no match or is
+  unavailable, and `notes` says so.
+- **Media:** never downloaded, stored, proxied or re-hosted. Results carry
+  KLIPY's own media URLs (GIF, MP4, WebP) and clients load them directly.
+- **Ads:** no `customer_id` is sent, so KLIPY returns no ad items.
+- **API key:** read from the server environment only, never accepted from
+  clients, never returned in errors or notes.
+
+**Server-side use.** An MCP server calls KLIPY from the server, not from the
+end user's device, and briefly caches API responses (search 10 minutes,
+trending 5) to stay within limits. Media is not cached. KLIPY asks for
+written approval for server-side integrations; the request is described in
+[docs/KLIPY.md](docs/KLIPY.md).
+
+**Running your own copy.** KLIPY is enabled by an API key from the
+[KLIPY Partner Panel](https://partner.klipy.com):
 
 - **stdio:** add `"env": { "KLIPY_API_KEY": "..." }` to the server entry in your MCP client config.
-- **Vercel via this repo's GitHub Actions:** add a repository secret named `KLIPY_API_KEY`; the preview and production workflows pass it to `vercel deploy --env`. (Or set it on the Vercel project with `vercel env add KLIPY_API_KEY production`.)
+- **Vercel via this repo's GitHub Actions:** add a repository secret named `KLIPY_API_KEY`; the preview and production workflows pass it to `vercel deploy --env`, and each preview is smoke-tested with a "facepalm" search.
 - **Cloudflare Workers:** `npx wrangler secret put KLIPY_API_KEY`.
 
-What changes when the key is set:
-
-- `search_gifs` (`source: auto`) asks KLIPY first. If KLIPY has matches, only
-  KLIPY results are returned; providers are never mixed in one list. If KLIPY
-  has no match or is down, the open-licence path runs as before and `notes`
-  says so.
-- KLIPY results have `source: "klipy"`, `mp4Url`/`webpUrl` (smaller files,
-  which is what chat apps actually send), and an attribution line containing
-  **"Powered by KLIPY"**. Show it wherever the GIFs are displayed; see
-  [KLIPY's attribution guidelines](https://klipy.com/attribution).
-- `trending_gifs` is registered.
-- The key stays server-side: it comes only from the environment, is never
-  accepted from MCP clients and is not included in errors or notes. No
-  `customer_id` is sent, so KLIPY does not insert ads.
-
-KLIPY test keys allow about 100 calls per minute; production keys are free
-but need KLIPY's approval. Results are cached for 10 minutes (trending for 5).
+Without a key, `trending_gifs` is not offered and search uses only the open
+sources. KLIPY test keys are limited to 100 calls per hour; production keys
+are requested in the Partner Panel and need KLIPY's approval. Self-hosters
+must follow KLIPY's terms and attribution rules with their own key.
 
 ## Attribution and licensing: your responsibility
 
-This server does **not** host or relicense anything. Every GIF stays under its
+This server does **not** host or relicense anything.
+
+**KLIPY results** (`source: "klipy"`) are provided under
+[KLIPY's terms](https://klipy.com/support/terms-services). Show
+**"Powered by KLIPY"** with them, keep them in the order returned, load media
+from the returned URLs, and do not mix them with GIFs from other providers in
+the same set. If you build a search box on top of them, its placeholder must
+read **"Search KLIPY"**.
+
+**Open-licence results** (`wikimedia-commons`, `openverse`) stay under their
 own license, which is usually Creative Commons (BY, BY-SA), CC0 or public
-domain. When you show a GIF:
+domain. When you show one:
 
 - Show the `attribution` string (or equivalent: title, author, license with
   link, and source page) next to it. It is pre-built in the
@@ -237,7 +279,11 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
 - `safe` (default) and `moderate` are the only modes; there is no unfiltered option.
 - Queries containing blocked terms are refused before any upstream call.
-- Results are dropped when their title, description, categories (Commons) or
+- KLIPY: content is filtered by KLIPY itself through the `rating` parameter
+  (`safe` → G, `moderate` → PG-13) and the KLIPY Partner Panel settings.
+  mcp-gifs does not drop or reorder KLIPY results (KLIPY's rules require the
+  result set to stay as KLIPY composed it).
+- Open sources: results are dropped when their title, description, categories (Commons) or
   tags (Openverse) contain blocked terms. `moderate` blocks sexual/explicit and
   hate content; `safe` also blocks violence, gore, self-harm and hard drugs.
 - Openverse is never asked for mature content, and results flagged
@@ -262,7 +308,8 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
   unset or 0 disables). Enabled in-memory limiters return HTTP 429 with
   `Retry-After: 60`. A self-hosted Cloudflare Worker can use the
   `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings instead.
-- Results are cached for 10 minutes, so repeated searches are cheap.
+- Results are cached for 10 minutes (KLIPY trending for 5), so repeated
+  searches are cheap and stay within KLIPY's limits. Media is never cached.
 - Upstream: Commons is queried sequentially with a descriptive User-Agent
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and
   `Retry-After` is respected. Anonymous Openverse is limited to about 20

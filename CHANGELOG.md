@@ -6,7 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Added
+## [0.3.0] - 2026-11-16
+
+### Changed
+- GIF search is powered by KLIPY on the public instance (`KLIPY_API_KEY` is
+  set through a GitHub Actions secret).
+- KLIPY results are no longer filtered or trimmed locally, to follow KLIPY's
+  integration requirements: they keep KLIPY's order and composition, the
+  keyword denylist no longer runs on KLIPY titles/tags (it still runs on the
+  query), and a size cap picks a smaller rendition instead of dropping a GIF.
+  Content filtering for KLIPY is its `rating` parameter and Partner Panel.
+- KLIPY attribution line is now `"<title>" · Powered by KLIPY · <page>`, and
+  every KLIPY response's `notes` spell out KLIPY's display rules for agents.
+- New landing page: a live GIF search with a "Search KLIPY" box and "Powered
+  by KLIPY" under it, client setup tabs, tool list and source credits. Light
+  and dark themes, no third-party requests except KLIPY media.
+- Docs: README rewritten around KLIPY; new `docs/KLIPY.md` maps each KLIPY
+  requirement to code and tests and drafts the approval request.
+
+### Fixed
+- KLIPY test keys are limited to 100 calls per hour (docs said per minute).
+
+### Added (merged in #6)
 - Optional KLIPY provider for the reaction/meme GIFs chat apps show. Enabled
   by setting `KLIPY_API_KEY` (stdio env, Vercel env var or Workers secret);
   without it nothing changes.

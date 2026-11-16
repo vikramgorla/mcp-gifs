@@ -60,7 +60,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
     { name: 'mcp-gifs', version: VERSION, title: klipy ? 'GIF finder (KLIPY + Wikimedia Commons + Openverse)' : 'GIF finder (Wikimedia Commons + Openverse)' },
     {
       instructions: klipy
-        ? 'Find animated GIFs by keyword, including the reaction/meme GIFs chat apps show. Results come from KLIPY first, with openly licensed GIFs from Wikimedia Commons and Openverse as a fallback. Use trending_gifs when there is no search text. Always show the attribution line with any GIF you display; for KLIPY results show "Powered by KLIPY".'
+        ? 'Find animated GIFs by keyword, including the reaction/meme GIFs chat apps show. GIF search is powered by KLIPY, with openly licensed GIFs from Wikimedia Commons and Openverse as a separate fallback. Use trending_gifs when there is no search text. Always show the attribution line with any GIF you display. For KLIPY results: show "Powered by KLIPY", keep KLIPY\'s order, load media from the returned URLs (never re-host), do not mix KLIPY GIFs with other providers in one set, and label any search box you show "Search KLIPY".'
         : 'Find openly licensed animated GIFs by keyword. Results come from Wikimedia Commons (primary) and Openverse (fallback); they skew documentary/educational rather than meme-style. Always show the attribution line with any GIF you display.',
     },
   );
@@ -71,7 +71,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
       title: 'Search GIFs',
       description:
         klipy
-          ? 'Search animated GIFs by keywords (e.g. "facepalm", "happy dance", "thank you"). Returns reaction/meme GIFs from KLIPY, or openly licensed GIFs when KLIPY has nothing. Each result has direct GIF (and MP4/WebP where available) URLs, a preview, dimensions and a ready-made attribution string.'
+          ? 'Search KLIPY for animated GIFs by keywords (e.g. "facepalm", "happy dance", "thank you"). Returns reaction/meme GIFs from KLIPY in KLIPY\'s order, or openly licensed GIFs when KLIPY has nothing (never mixed). Each result has direct GIF (and MP4/WebP where available) URLs, a preview, dimensions and an attribution string; KLIPY results must be shown with "Powered by KLIPY".'
           : 'Search openly licensed animated GIFs by keywords (e.g. "cat", "rocket launch", "dancing"). Returns direct GIF URLs, preview URLs, dimensions, license and a ready-made attribution string. English keywords work best.',
       inputSchema: z.object({
         query: z.string().trim().min(1).max(200).describe('Keywords describing the GIF you want.'),
@@ -132,7 +132,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
       'trending_gifs',
       {
         title: 'Trending GIFs',
-        description: 'Currently trending reaction GIFs from KLIPY, like the default tab of a chat app GIF picker. Use when the user wants a GIF but gave no search words.',
+        description: 'Currently trending reaction GIFs from KLIPY, in KLIPY\'s order, like the default tab of a chat app GIF picker. Use when the user wants a GIF but gave no search words. Show "Powered by KLIPY" with the results.',
         inputSchema: z.object({
           limit: z.number().int().min(1).max(25).default(8).describe('Max results (1-25, default 8).'),
           safety: safetySchema,

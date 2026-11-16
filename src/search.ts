@@ -15,6 +15,8 @@ export interface SearchDeps {
 }
 
 export const KLIPY_TIMEOUT_MS = 5000;
+export const KLIPY_NOTE =
+  'Powered by KLIPY. Show "Powered by KLIPY" wherever these GIFs are displayed, keep them in this order, load media from the URLs given (do not re-host), and do not mix them with GIFs from other providers in the same set. If you offer a search box for these results, its placeholder must read "Search KLIPY".';
 export const KLIPY_NOT_CONFIGURED = 'KLIPY is not configured on this server (no KLIPY_API_KEY), so meme/reaction GIFs are unavailable.';
 
 export const COMMONS_TIMEOUT_MS = 8000;
@@ -104,7 +106,7 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
     try {
       const k = await searchKlipy(query, { apiKey: klipyKey, limit, safety, locale: params.locale, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
       if (k.length > 0 || source === 'klipy') {
-        const klipyNotes = k.length ? ['Powered by KLIPY: show "Powered by KLIPY" wherever these GIFs are displayed.'] : ['No matching GIFs found on KLIPY. Try different keywords.'];
+        const klipyNotes = k.length ? [KLIPY_NOTE] : ['No matching GIFs found on KLIPY. Try different keywords.'];
         const out: SearchResult = { ...base, count: k.length, results: k, sourcesQueried, notes: klipyNotes };
         await deps.cache?.put(cacheKey, out, deps.cacheTtlSeconds ?? 600);
         return out;
@@ -173,7 +175,7 @@ export async function getGif(id: string, safety: Safety, deps: SearchDeps = {}):
   if (id.startsWith('wikimedia:')) return getCommonsFile(id.slice('wikimedia:'.length), safety, opts);
   if (id.startsWith('klipy:')) {
     if (!deps.klipyApiKey) return null;
-    return getKlipyGif(id.slice('klipy:'.length), deps.klipyApiKey, safety, { ...opts, timeoutMs: KLIPY_TIMEOUT_MS });
+    return getKlipyGif(id.slice('klipy:'.length), deps.klipyApiKey, { ...opts, timeoutMs: KLIPY_TIMEOUT_MS });
   }
   if (id.startsWith('openverse:')) return getOpenverseImage(id.slice('openverse:'.length), safety, { ...opts, timeoutMs: OPENVERSE_TIMEOUT_MS });
   return null;
@@ -195,7 +197,7 @@ export async function trendingGifs(params: TrendingParams, deps: SearchDeps = {}
   } catch (err) {
     throw new SearchFailedError(`KLIPY unavailable: ${describeError(err)}.`);
   }
-  const out: SearchResult = { ...base, count: results.length, results, sourcesQueried: ['klipy'], notes: ['Powered by KLIPY: show "Powered by KLIPY" wherever these GIFs are displayed.'] };
+  const out: SearchResult = { ...base, count: results.length, results, sourcesQueried: ['klipy'], notes: [KLIPY_NOTE] };
   await deps.cache?.put(cacheKey, out, Math.min(deps.cacheTtlSeconds ?? 600, 300));
   return out;
 }

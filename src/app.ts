@@ -83,7 +83,7 @@ export function createHttpApp(opts: HttpAppOptions = {}) {
         return withCors(json({ status: 'ok', name: 'mcp-gifs', version: VERSION }, 200, { 'Cache-Control': 'public, max-age=60' }));
       }
       if (url.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
-        return new Response(landingPage(url.origin), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
+        return new Response(landingPage(url.origin, { klipy: Boolean(opts.klipyApiKey) }), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
       }
       return withCors(json({ error: 'Not found', mcp: `${url.origin}/mcp` }, 404));
     },

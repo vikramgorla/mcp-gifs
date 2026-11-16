@@ -47,6 +47,31 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
+      - name: Smoke test preview (search "facepalm")
+        if: steps.require.outputs.has_secrets == 'true'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          body='{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_gifs","arguments":{"query":"facepalm","limit":5}}}'
+          out=$(vercel curl /mcp --deployment "$URL" --token="$VERCEL_TOKEN" --yes -- --silent --request POST \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/json, text/event-stream' \
+            --header 'MCP-Protocol-Version: 2025-06-18' \
+            --data "$body")
+          echo "$out" | head -c 3000; echo
+          json=$(echo "$out" | sed -n 's/^data: //p' | head -1); [ -n "$json" ] || json="$out"
+          sources=$(echo "$json" | jq -r '.result.structuredContent.results[]?.source' | sort | uniq -c)
+          echo "Notes:"; echo "$json" | jq -r '.result.structuredContent.notes[]?, .error.message?' || true
+          echo "Sources returned for \"facepalm\":"; echo "$sources"
+          { echo "### Smoke test: search \"facepalm\""; echo '```'; echo "$sources"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$sources" ] || { echo "No results"; exit 1; }
+          if [ -n "$KLIPY_API_KEY" ]; then
+            echo "$sources" | grep -q klipy || { echo "KLIPY key is set but no klipy results"; exit 1; }
+          fi
       - name: Comment preview URL
         if: steps.require.outputs.has_secrets == 'true'
         uses: actions/github-script@v7

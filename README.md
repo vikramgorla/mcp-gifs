@@ -1,49 +1,82 @@
-# mcp-gifs
+<p align="center">
+  <a href="https://gifs.vikram-gorla.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+      <img src="docs/assets/banner-light.svg" alt="mcp-gifs: Give your AI a GIF button. GIF search powered by KLIPY." width="100%">
+    </picture>
+  </a>
+</p>
 
-A public, **no-auth** [Model Context Protocol](https://modelcontextprotocol.io)
-server that lets AI agents search GIFs the way chat apps do. Agents call
-`search_gifs` with a few words and get back direct GIF links, previews,
-dimensions and a ready-made credit line for each result.
+<p align="center">
+  <a href="https://gifs.vikram-gorla.com"><img alt="Try it live" src="https://img.shields.io/badge/try_it-live-ff5da2?style=for-the-badge&labelColor=1e1446"></a>
+  <a href="https://klipy.com"><img alt="GIF search powered by KLIPY" src="https://img.shields.io/badge/GIF_search-powered_by_KLIPY-ffd93d?style=for-the-badge&labelColor=1e1446"></a>
+  <a href="https://modelcontextprotocol.io"><img alt="MCP server" src="https://img.shields.io/badge/MCP-server-5bb8ff?style=for-the-badge&labelColor=1e1446"></a>
+  <a href="#plug-it-in"><img alt="No auth, no API key" src="https://img.shields.io/badge/no_auth-no_API_key-3ddc97?style=for-the-badge&labelColor=1e1446"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-ffa94d?style=for-the-badge&labelColor=1e1446"></a>
+</p>
 
-**GIF search is powered by [KLIPY](https://klipy.com).**
+<p align="center">
+  <a href="#plug-it-in"><b>Plug it in</b></a> ·
+  <a href="#what-your-agent-gets"><b>Tools</b></a> ·
+  <a href="#powered-by-klipy"><b>Powered by KLIPY</b></a> ·
+  <a href="#run-your-own-copy"><b>Self-host</b></a>
+</p>
 
-- **Sources:** [KLIPY](https://klipy.com) for reaction/meme GIFs (the kind
-  WhatsApp and Teams pickers show), with openly licensed GIFs from
-  [Wikimedia Commons](https://commons.wikimedia.org) and
-  [Openverse](https://openverse.org) as a separate fallback. Results from
-  different providers are never mixed in one list.
-- **Tools:** `search_gifs`, `trending_gifs` (KLIPY) and `get_gif`.
-- **Transports:** stateless Streamable HTTP at `/mcp` (Vercel Edge Function)
-  and stdio for local use.
-- **Attribution built in:** KLIPY results carry "Powered by KLIPY"; open
-  results carry author, license and source. See
-  [KLIPY integration and attribution](#klipy-integration-and-attribution).
-- **Safety on by default:** unsafe queries are refused, and KLIPY is asked for
-  G-rated content unless the client picks `moderate`.
+## Your AI can write, code and plan. Now it can send a perfect facepalm.
 
-> **Public endpoint:** `https://gifs.vikram-gorla.com/mcp`
-> (no auth, no API key for clients; landing page with a live
-> "Search KLIPY" demo at <https://gifs.vikram-gorla.com/>, health check at
-> `/health`). Hosted on Vercel Hobby. To run your own copy, see
-> [Self-host / deploy](#self-host--deploy).
+**mcp-gifs** is a free, public [MCP](https://modelcontextprotocol.io) server
+that gives Claude, Cursor, VS Code and any other MCP client a GIF button. Your
+agent asks for "mind blown" and gets back the same kind of reaction GIFs
+people send in WhatsApp or Teams, each with a direct link, a preview, its size
+and a credit line ready to show.
 
-## Connect
+- 🎉 **The GIFs people actually send.** GIF search is
+  **powered by [KLIPY](https://klipy.com)**: reactions, memes, trending.
+- 📚 **A free-licence backup.** When KLIPY has nothing, openly licensed GIFs
+  from [Wikimedia Commons](https://commons.wikimedia.org) and
+  [Openverse](https://openverse.org) step in. The two are never mixed in one
+  list.
+- 🔌 **Zero setup.** One URL. No sign-in, no API key, no sessions.
+- 🧸 **Safe by default.** Unsafe searches are refused and KLIPY is asked for
+  G-rated GIFs unless you pick `moderate`.
+- 🏷️ **Credit built in.** Every result says where it came from, and agents
+  are told to show it.
 
-### Remote (Streamable HTTP)
+<p align="center">
+  <a href="https://gifs.vikram-gorla.com"><img src="docs/assets/homepage.png" alt="The mcp-gifs homepage: a yellow sticker-style page with the headline 'Give your AI a GIF button.' and a live GIF picker whose search box says 'Search KLIPY', with 'Powered by KLIPY' under it." width="88%"></a>
+  <br><sub>Try the picker yourself at <a href="https://gifs.vikram-gorla.com">gifs.vikram-gorla.com</a>. It shows exactly what your agent gets back.</sub>
+</p>
 
-**Cursor**: `~/.cursor/mcp.json` (or `.cursor/mcp.json` in a project):
+## Plug it in
 
-```json
-{
-  "mcpServers": {
-    "gifs": { "url": "https://gifs.vikram-gorla.com/mcp" }
-  }
-}
+The endpoint is **`https://gifs.vikram-gorla.com/mcp`** (Streamable HTTP,
+stateless). Pick your client and you are done in about 30 seconds.
+
+**Claude** (claude.ai and the desktop app): Settings → Connectors →
+*Add custom connector*, then paste the URL. No OAuth needed.
+
+**Claude Code**
+
+```bash
+claude mcp add --transport http gifs https://gifs.vikram-gorla.com/mcp
 ```
 
-**Claude Desktop / claude.ai**: Settings → Connectors → *Add custom connector*,
-paste the `/mcp` URL. No OAuth is needed. On older Claude Desktop builds without
-custom connectors, bridge through stdio with
+**Cursor**: `~/.cursor/mcp.json` (or `.cursor/mcp.json` in a project)
+
+```json
+{ "mcpServers": { "gifs": { "url": "https://gifs.vikram-gorla.com/mcp" } } }
+```
+
+**VS Code**: `.vscode/mcp.json`
+
+```json
+{ "servers": { "gifs": { "type": "http", "url": "https://gifs.vikram-gorla.com/mcp" } } }
+```
+
+<details>
+<summary><b>Older Claude Desktop, other clients, and running it locally</b></summary>
+
+On Claude Desktop builds without custom connectors, bridge through stdio with
 [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
 ```json
@@ -54,22 +87,13 @@ custom connectors, bridge through stdio with
 }
 ```
 
-**Claude Code**: `claude mcp add --transport http gifs https://gifs.vikram-gorla.com/mcp`
-
-**VS Code**: `.vscode/mcp.json`:
-
-```json
-{ "servers": { "gifs": { "type": "http", "url": "https://gifs.vikram-gorla.com/mcp" } } }
-```
-
-**Anything else**: any client that speaks MCP Streamable HTTP. The server is
-stateless: no session id, no auth header. Try it with the
+Any other client that speaks MCP Streamable HTTP works too: no session id, no
+auth header. Poke at it with the
 [MCP Inspector](https://github.com/modelcontextprotocol/inspector):
 `npx @modelcontextprotocol/inspector` → transport *Streamable HTTP* → the URL.
 
-### Local (stdio)
-
-The package is not published to npm. Run it from a checkout (Node 20+):
+**Local (stdio).** The package is not on npm; run it from a checkout
+(Node 20+):
 
 ```bash
 git clone https://github.com/vikramgorla/mcp-gifs && cd mcp-gifs
@@ -79,27 +103,44 @@ npm ci && npm run build
 ```json
 {
   "mcpServers": {
-    "gifs": { "command": "node", "args": ["/absolute/path/to/mcp-gifs/dist/stdio.js"] }
+    "gifs": {
+      "command": "node",
+      "args": ["/absolute/path/to/mcp-gifs/dist/stdio.js"],
+      "env": { "KLIPY_API_KEY": "optional: your own KLIPY key" }
+    }
   }
 }
 ```
 
-This config works in Claude Desktop (`claude_desktop_config.json`), Cursor and
-other stdio clients. The stdio server calls Commons/Openverse directly from
-your machine.
+This works in Claude Desktop (`claude_desktop_config.json`), Cursor and other
+stdio clients. Without `KLIPY_API_KEY` the local server uses only the open
+sources.
 
-## Tools
+</details>
 
-### `search_gifs`
+## What your agent gets
+
+Three tools. Ask for a vibe, get GIFs.
+
+| Tool | What it does |
+|---|---|
+| 🔎 `search_gifs` | Find GIFs by a few words: "facepalm", "happy dance", "thank you". |
+| 🔥 `trending_gifs` | What people are sending right now, like the first tab of a GIF picker. |
+| 🎯 `get_gif` | Look up one GIF again by the id that search returned. |
+
+### 🔎 `search_gifs`
 
 | Argument      | Type                                   | Default  | Notes |
 |---------------|----------------------------------------|----------|-------|
 | `query`       | string (1-200 chars)                   | required | Keywords, e.g. `cat`, `rocket launch`. English works best. |
 | `limit`       | integer 1-25                           | `8`      | Maximum results. |
-| `safety`      | `safe` \| `moderate`                   | `safe`   | See [Safety](#safety). No unfiltered mode. |
+| `safety`      | `safe` \| `moderate`                   | `safe`   | See [Safety](#safety-first). No unfiltered mode. |
 | `source`      | `auto` \| `klipy` \| `wikimedia` \| `openverse` | `auto` | `auto` = KLIPY first; if KLIPY has no match (or no key is configured), Commons first and Openverse fills gaps. |
-| `max_size_mb` | number 0.1-100                         | `10`     | Skip larger files (Commons GIFs range from 1 KB to 40+ MB). |
-| `locale`      | string like `en_US`                    | none     | KLIPY only: localized results. |
+| `max_size_mb` | number 0.1-100                         | `10`     | Prefer files up to this size. KLIPY: picks a smaller rendition. Open sources: skips larger files. |
+| `locale`      | string like `en_US`                    | none     | KLIPY only: results tuned to a language and region. |
+
+<details>
+<summary><b>See a full response</b> (real output from an open-licence search)</summary>
 
 Returns `structuredContent` plus a readable markdown summary. Real output for
 `{"query": "rocket launch", "limit": 2}` (2026-11-14):
@@ -166,32 +207,39 @@ Field notes:
   is only a few hundred pixels wide is not served as a multi-megabyte preview.
 - `notes` explains fallbacks, blocked queries and upstream problems.
 
-### `get_gif`
+</details>
 
-| Argument | Type   | Default  | Notes |
-|----------|--------|----------|-------|
-| `id`     | string | required | An `id` from `search_gifs`, e.g. `wikimedia:File:Spinning Dancer.gif` or `openverse:<uuid>`. |
-| `safety` | `safe` \| `moderate` | `safe` | |
+### 🔥 `trending_gifs`
 
-Returns `{ "found": boolean, "gif": <same shape as above> | null }`.
-`klipy:<slug>` ids work when KLIPY is configured.
-
-### `trending_gifs` (only when KLIPY is configured)
+Only offered when KLIPY is configured (it is on the public server).
 
 | Argument      | Type                 | Default | Notes |
 |---------------|----------------------|---------|-------|
 | `limit`       | integer 1-25         | `8`     | |
-| `safety`      | `safe` \| `moderate` | `safe`  | Sent to KLIPY as `rating=g` / `pg-13`, plus the keyword filter. |
+| `safety`      | `safe` \| `moderate` | `safe`  | Sent to KLIPY as `rating=g` / `pg-13`. |
 | `max_size_mb` | number 0.1-100       | `10`    | |
 | `locale`      | string like `en_US`  | none    | |
 
 Same output shape as `search_gifs`, with `query: ""`. This is the default tab
 of a chat-app GIF picker.
 
-## KLIPY integration and attribution
+### 🎯 `get_gif`
 
-GIF search on the public instance is **powered by [KLIPY](https://klipy.com)**.
-This section is how mcp-gifs follows KLIPY's
+| Argument | Type   | Default  | Notes |
+|----------|--------|----------|-------|
+| `id`     | string | required | An `id` from `search_gifs`, e.g. `klipy:<slug>`, `wikimedia:File:Spinning Dancer.gif` or `openverse:<uuid>`. |
+| `safety` | `safe` \| `moderate` | `safe` | |
+
+Returns `{ "found": boolean, "gif": <same shape as above> | null }`.
+
+## Powered by KLIPY
+
+<p>
+  <a href="https://klipy.com"><img alt="GIF search powered by KLIPY" src="https://img.shields.io/badge/GIF_search-powered_by_KLIPY-ffd93d?style=for-the-badge&labelColor=1e1446"></a>
+</p>
+
+The reaction GIFs come from **[KLIPY](https://klipy.com)**, and we play by
+their rules. This section is how mcp-gifs follows KLIPY's
 [attribution guidelines](https://docs.klipy.com/attribution) and
 [integration requirements](https://docs.klipy.com/integration-requirements).
 Requirement-by-requirement evidence (code, tests, screenshots) is in
@@ -243,9 +291,10 @@ sources. KLIPY test keys are limited to 100 calls per hour; production keys
 are requested in the Partner Panel and need KLIPY's approval. Self-hosters
 must follow KLIPY's terms and attribution rules with their own key.
 
-## Attribution and licensing: your responsibility
+## Show the credit
 
-This server does **not** host or relicense anything.
+Good GIFs deserve credit. This server does **not** host or relicense
+anything, so when your app or agent shows a GIF, show where it came from.
 
 **KLIPY results** (`source: "klipy"`) are provided under
 [KLIPY's terms](https://klipy.com/support/terms-services). Show
@@ -275,7 +324,9 @@ domain. When you show one:
 Not affiliated with or endorsed by the Wikimedia Foundation. GIF files are
 loaded directly from the original hosts (mostly `upload.wikimedia.org`).
 
-## Safety
+## Safety first
+
+GIFs should be fun for everyone in the chat.
 
 - `safe` (default) and `moderate` are the only modes; there is no unfiltered option.
 - Queries containing blocked terms are refused before any upstream call.
@@ -296,7 +347,7 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
   filtering relies on keywords. It can miss things and can over-block. Please
   [open an issue](https://github.com/vikramgorla/mcp-gifs/issues) for misses.
 
-## Rate limits
+## Limits
 
 - Hosted endpoint: the only cap is the Vercel Firewall rule
   `mcp-rate-limit` (path prefix `/mcp`, fixed window of 60 s, **60 requests
@@ -317,7 +368,9 @@ loaded directly from the original hosts (mostly `upload.wikimedia.org`).
   only a fallback: in `source=auto` it is given a 2 s timeout (8 s when
   Openverse is requested explicitly) and pauses for 60 s after a failure.
 
-## Self-host / deploy
+## Run your own copy
+
+Want your own GIF button? Fork it and deploy in a few minutes.
 
 The public instance is on **Vercel Hobby**. That plan is free and **pauses**
 when included usage is exhausted; it does not start billing. Requirements to
@@ -369,7 +422,9 @@ curl -s -X POST http://localhost:8787/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_gifs","arguments":{"query":"cat","limit":2}}}'
 ```
 
-## Development
+## Hacking on it
+
+PRs welcome, especially new example searches and safety fixes.
 
 ```bash
 npm run typecheck && npm run lint && npm test
@@ -378,9 +433,10 @@ MCP_URL=http://localhost:8787/mcp npm run smoke     # also test an HTTP endpoint
 npm run stdio                                       # run the stdio server from source
 ```
 
-Layout: `src/sources/` (Commons and Openverse clients and mapping),
-`src/search.ts` (fallback, de-duplication, caching), `src/safety.ts`,
-`src/server.ts` (MCP tools), `src/app.ts` (shared HTTP), `src/vercel.ts` /
+Layout: `src/sources/` (KLIPY, Commons and Openverse clients and mapping),
+`src/search.ts` (provider order, fallback, caching), `src/safety.ts`,
+`src/server.ts` (MCP tools), `src/landing.ts` (the homepage),
+`src/app.ts` (shared HTTP), `src/vercel.ts` /
 `api/index.ts` (Vercel Edge entry), `src/worker.ts` (Workers self-host entry), `src/stdio.ts`.
 Design rationale: [docs/DECISIONS.md](docs/DECISIONS.md).
 

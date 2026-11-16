@@ -12,6 +12,8 @@ export interface RateLimiter {
 export interface HttpAppOptions {
   cache?: ResultCache;
   cacheTtlSeconds?: number;
+  /** KLIPY API key from the operator's environment; enables KLIPY results. */
+  klipyApiKey?: string;
   rateLimiter?: RateLimiter;
   globalRateLimiter?: RateLimiter;
   /** Client IP used as the per-IP rate-limit key. */
@@ -46,8 +48,8 @@ let handler: ReturnType<typeof createMcpHandler> | undefined;
 function getHandler(opts: HttpAppOptions) {
   if (!handler) {
     const ttl = opts.cacheTtlSeconds ?? 600;
-    const cache = opts.cache;
-    handler = createMcpHandler(() => createServer({ cache, cacheTtlSeconds: ttl }), {
+    const { cache, klipyApiKey } = opts;
+    handler = createMcpHandler(() => createServer({ cache, cacheTtlSeconds: ttl, klipyApiKey }), {
       legacy: 'stateless',
       onerror: (err) => console.error('[mcp-gifs]', err.message),
     });

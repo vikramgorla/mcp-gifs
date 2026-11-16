@@ -2,6 +2,7 @@ import { UpstreamError, type FetchJsonOptions } from './http.js';
 import { blockedTerm } from './safety.js';
 import { commonsFrameCounts, commonsTitleFromUploadUrl, getCommonsFile, searchCommons } from './sources/wikimedia.js';
 import { getOpenverseImage, searchOpenverse } from './sources/openverse.js';
+import { getKlipyGif, searchKlipy, trendingKlipy } from './sources/klipy.js';
 import { toWords } from './text.js';
 import type { Gif, ResultCache, Safety, SearchParams, SearchResult, SourceName, SourceParam } from './types.js';
 
@@ -9,7 +10,12 @@ export interface SearchDeps {
   cache?: ResultCache;
   fetchImpl?: typeof fetch;
   cacheTtlSeconds?: number;
+  /** Operator's KLIPY API key (env KLIPY_API_KEY). When unset, KLIPY is off. */
+  klipyApiKey?: string;
 }
+
+export const KLIPY_TIMEOUT_MS = 5000;
+export const KLIPY_NOT_CONFIGURED = 'KLIPY is not configured on this server (no KLIPY_API_KEY), so meme/reaction GIFs are unavailable.';
 
 export const COMMONS_TIMEOUT_MS = 8000;
 /** Used when the client asked for Openverse explicitly. */
@@ -80,9 +86,37 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
     return { ...base, count: 0, results: [], sourcesQueried, notes: ['Query has no searchable words.'] };
   }
 
-  const cacheKey = `search:v1:${source}:${safety}:${limit}:${maxBytes}:${words.join(' ')}`;
+  const klipyKey = deps.klipyApiKey || undefined;
+  const cacheKey = `search:v2:${source}:${klipyKey ? 'k' : '-'}:${params.locale ?? ''}:${safety}:${limit}:${maxBytes}:${words.join(' ')}`;
   const cached = (await deps.cache?.get(cacheKey)) as SearchResult | undefined;
   if (cached) return { ...cached, query };
+
+  let failures = 0;
+  let degraded = false;
+
+  // KLIPY (reaction/meme GIFs, the kind chat apps show) goes first when configured.
+  // Its results are returned on their own, never mixed with open-licence results.
+  if (source === 'klipy' && !klipyKey) {
+    return { ...base, count: 0, results: [], sourcesQueried, notes: [KLIPY_NOT_CONFIGURED] };
+  }
+  if (klipyKey && (source === 'auto' || source === 'klipy')) {
+    sourcesQueried.push('klipy');
+    try {
+      const k = await searchKlipy(query, { apiKey: klipyKey, limit, safety, locale: params.locale, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
+      if (k.length > 0 || source === 'klipy') {
+        const klipyNotes = k.length ? ['Powered by KLIPY: show "Powered by KLIPY" wherever these GIFs are displayed.'] : ['No matching GIFs found on KLIPY. Try different keywords.'];
+        const out: SearchResult = { ...base, count: k.length, results: k, sourcesQueried, notes: klipyNotes };
+        await deps.cache?.put(cacheKey, out, deps.cacheTtlSeconds ?? 600);
+        return out;
+      }
+      notes.push('KLIPY had no matches; showing openly licensed GIFs instead.');
+    } catch (err) {
+      if (source === 'klipy') throw new SearchFailedError(`KLIPY unavailable: ${describeError(err)}.`);
+      failures++;
+      degraded = true;
+      notes.push(`KLIPY unavailable (${describeError(err)}); showing openly licensed GIFs instead.`);
+    }
+  }
 
   const commonsOpts: FetchJsonOptions = { timeoutMs: COMMONS_TIMEOUT_MS, fetchImpl: deps.fetchImpl };
   const ovOpts: FetchJsonOptions = { timeoutMs: openverseTimeoutMs(source), fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 };
@@ -96,9 +130,6 @@ export async function searchGifs(params: SearchParams, deps: SearchDeps = {}): P
       results.push(g);
     }
   };
-  let failures = 0;
-  let degraded = false;
-
   if (source === 'auto' || source === 'wikimedia') {
     sourcesQueried.push('wikimedia-commons');
     try {
@@ -140,6 +171,31 @@ export async function getGif(id: string, safety: Safety, deps: SearchDeps = {}):
   const opts: FetchJsonOptions = { timeoutMs: COMMONS_TIMEOUT_MS, fetchImpl: deps.fetchImpl };
   if (/[|\r\n]/.test(id) || id.length > 300) return null;
   if (id.startsWith('wikimedia:')) return getCommonsFile(id.slice('wikimedia:'.length), safety, opts);
+  if (id.startsWith('klipy:')) {
+    if (!deps.klipyApiKey) return null;
+    return getKlipyGif(id.slice('klipy:'.length), deps.klipyApiKey, safety, { ...opts, timeoutMs: KLIPY_TIMEOUT_MS });
+  }
   if (id.startsWith('openverse:')) return getOpenverseImage(id.slice('openverse:'.length), safety, { ...opts, timeoutMs: OPENVERSE_TIMEOUT_MS });
   return null;
+}
+
+export interface TrendingParams { limit: number; safety: Safety; locale?: string; maxBytes?: number }
+
+/** Trending reaction GIFs, like the default tab of a chat app's GIF picker. KLIPY only. */
+export async function trendingGifs(params: TrendingParams, deps: SearchDeps = {}): Promise<SearchResult> {
+  const base = { query: '', safety: params.safety };
+  if (!deps.klipyApiKey) return { ...base, count: 0, results: [], sourcesQueried: [], notes: [KLIPY_NOT_CONFIGURED] };
+  const maxBytes = params.maxBytes ?? Infinity;
+  const cacheKey = `trending:v1:${params.locale ?? ''}:${params.safety}:${params.limit}:${maxBytes}`;
+  const cached = (await deps.cache?.get(cacheKey)) as SearchResult | undefined;
+  if (cached) return cached;
+  let results: Gif[];
+  try {
+    results = await trendingKlipy({ apiKey: deps.klipyApiKey, ...params, maxBytes }, { timeoutMs: KLIPY_TIMEOUT_MS, fetchImpl: deps.fetchImpl, maxRetryAfterSeconds: 0 });
+  } catch (err) {
+    throw new SearchFailedError(`KLIPY unavailable: ${describeError(err)}.`);
+  }
+  const out: SearchResult = { ...base, count: results.length, results, sourcesQueried: ['klipy'], notes: ['Powered by KLIPY: show "Powered by KLIPY" wherever these GIFs are displayed.'] };
+  await deps.cache?.put(cacheKey, out, Math.min(deps.cacheTtlSeconds ?? 600, 300));
+  return out;
 }

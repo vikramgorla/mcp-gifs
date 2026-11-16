@@ -14,7 +14,7 @@ export function landingPage(origin: string): string {
 <h2>Connect</h2>
 <p>MCP endpoint (Streamable HTTP, stateless): <code>${esc(mcpUrl)}</code></p>
 <pre>${cfg}</pre>
-<p>Tools: <code>search_gifs</code> (query, limit, safety, source) and <code>get_gif</code> (id).</p>
+<p>Tools: <code>search_gifs</code> (query, limit, safety, source) and <code>get_gif</code> (id). With a KLIPY key configured, also <code>trending_gifs</code>, and reaction GIFs "Powered by KLIPY".</p>
 <h2>Attribution</h2>
 <p>Every result carries its license and a ready-made attribution line. Show it next to the GIF. Results are filtered with a best-effort keyword safety filter (Commons has no official content rating).</p>
 <p>Made with Openverse, not endorsed by Openverse. Not affiliated with the Wikimedia Foundation.</p>

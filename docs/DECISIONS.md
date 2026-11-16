@@ -180,3 +180,34 @@ over 40 MB.
 The package has a `bin` for local stdio use but is `private` and **not
 published** to npm or any MCP registry in v0.1.0; that needs the owner's
 explicit go-ahead.
+
+## 6. Optional KLIPY provider (unreleased)
+
+**Decision.** Add [KLIPY](https://klipy.com/developers) as an optional,
+operator-configured provider (`KLIPY_API_KEY`). Without the key the server
+behaves exactly as before.
+
+**Why.** Users expect the reaction/meme GIFs that WhatsApp and Microsoft
+Teams pickers show. Those come from commercial libraries (Teams uses GIPHY;
+WhatsApp moved its Tenor users to GIPHY after Tenor's API shut down on
+2026-06-30 and has tested KLIPY). Openly licensed sources cannot cover that.
+GIPHY's free beta keys are capped at 100 calls/hour and its unlimited
+production keys are paid, which does not fit a free public server. KLIPY
+offers free production keys (after approval) with attribution required.
+
+**How.**
+- KLIPY results are returned on their own and never interleaved with
+  Commons/Openverse results; `auto` falls back to the open sources only when
+  KLIPY has no match or fails.
+- The key is read from the environment only, sits in the URL path as KLIPY
+  requires, and is never accepted from clients or echoed in errors.
+- No `customer_id` is sent, so KLIPY's ad items are not requested; any item
+  whose `type` is not `gif` is dropped anyway.
+- `safety` maps to KLIPY's `rating` (`g` / `pg-13`) and the keyword denylist
+  still runs on titles and tags.
+
+**Open items.** Before enabling KLIPY on the public instance: obtain a
+production key, confirm with KLIPY that a public MCP server is an accepted
+integration, and confirm the attribution text and page URL format
+(`https://klipy.com/gifs/<slug>` is assumed). The share-trigger endpoint is
+not called, because an MCP server cannot know whether a GIF was actually sent.

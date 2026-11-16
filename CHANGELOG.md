@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Optional KLIPY provider for the reaction/meme GIFs chat apps show. Enabled
+  by setting `KLIPY_API_KEY` (stdio env, Vercel env var or Workers secret);
+  without it nothing changes.
+  - `search_gifs` `source: auto` tries KLIPY first and returns only KLIPY
+    results when it has matches, falling back to Commons/Openverse otherwise.
+    New `source: klipy` and `locale` arguments.
+  - New `trending_gifs` tool, registered only when KLIPY is configured.
+  - `get_gif` accepts `klipy:<slug>` ids.
+  - Results may include `mp4Url` and `webpUrl`.
+  - `safety` maps to KLIPY's rating (`safe` → G, `moderate` → PG-13) on top
+    of the keyword filter; KLIPY ads are filtered out and no `customer_id`
+    is sent.
+
 ## [0.2.1] - 2026-11-14
 
 ### Changed

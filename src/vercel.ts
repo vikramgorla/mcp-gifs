@@ -18,6 +18,7 @@ const cache = new MemoryCache();
 const app = createHttpApp({
   cache,
   cacheTtlSeconds: 600,
+  klipyApiKey: process.env.KLIPY_API_KEY || undefined,
   ...memoryLimitersFromEnv(),
   clientIp: clientIpFromHeaders,
 });

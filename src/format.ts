@@ -12,6 +12,7 @@ export function gifToMarkdown(g: Gif, n?: number): string {
     head,
     `   - GIF: ${g.url}`,
     `   - Preview: ${g.previewUrl}`,
+    ...(g.mp4Url ? [`   - MP4: ${g.mp4Url}`] : []),
     `   - ${g.width}×${g.height}${size(g.fileSizeBytes)}, ${anim}; source: ${g.source}`,
     `   - License: ${g.license}${g.licenseUrl ? ` (${g.licenseUrl})` : ''}${g.attributionRequired ? ' (attribution required)' : ''}`,
     `   - Attribution: ${g.attribution}`,
@@ -20,7 +21,8 @@ export function gifToMarkdown(g: Gif, n?: number): string {
 }
 
 export function searchToMarkdown(r: SearchResult): string {
-  const lines = [`Found ${r.count} GIF${r.count === 1 ? '' : 's'} for "${r.query}" (safety: ${r.safety}; sources: ${r.sourcesQueried.join(', ') || 'none'}).`];
+  const what = r.query ? `for "${r.query}"` : 'trending';
+  const lines = [`Found ${r.count} GIF${r.count === 1 ? '' : 's'} ${what} (safety: ${r.safety}; sources: ${r.sourcesQueried.join(', ') || 'none'}).`];
   if (r.notes.length) lines.push(...r.notes.map((n) => `> ${n}`));
   if (r.results.length) {
     lines.push('', ...r.results.map((g, i) => gifToMarkdown(g, i + 1)));

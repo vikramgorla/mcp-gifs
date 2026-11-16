@@ -5,11 +5,13 @@ Research and live checks were done on 2026-11-14.
 
 ## 1. GIF sources: Wikimedia Commons first, Openverse as fallback
 
-**Decision.** Use the Wikimedia Commons Action API as the primary source and
-Openverse as a fallback. Do not use Tenor, GIPHY or Klipy.
+**Decision (2026-11-14).** Use the Wikimedia Commons Action API as the primary
+source and Openverse as a fallback. Do not use Tenor, GIPHY or Klipy.
 
-> **Superseded in part (v0.3.0):** KLIPY is now the first source when a key is
-> configured, under KLIPY's integration rules. See decision 6.
+> **Superseded in part (2026-11-16, v0.3.0):** KLIPY is now the primary source
+> when a server-held `KLIPY_API_KEY` is set. End users and MCP clients still
+> need no auth or key. Commons and Openverse remain the fallback, and the only
+> sources when no key is set. See decision 9.
 
 **Why.**
 - The server must be public and need **no auth**, so sources must work without
@@ -25,10 +27,13 @@ Openverse as a fallback. Do not use Tenor, GIPHY or Klipy.
 - **Tenor**: its public API was shut down in June 2026.
 - **GIPHY / Klipy**: their API terms forbid routing their API through a
   server/proxy like this one and mixing their results with other providers.
-  They also require per-integration keys, which conflicts with "no auth".
+  They also require per-integration keys, which at the time appeared to
+  conflict with "no auth". (v0.3.0 keeps end users keyless by holding the
+  KLIPY key on the server only; see decision 9.)
 
-**Trade-off.** Results are openly licensed and documentary/educational rather
-than reaction-meme style. Queries like "facepalm" may return nothing.
+**Trade-off (as of 2026-11-14).** Results are openly licensed and
+documentary/educational rather than reaction-meme style. Queries like
+"facepalm" may return nothing. This gap is why KLIPY was added (decision 9).
 
 ## 2. Detecting animated GIFs
 
@@ -184,11 +189,14 @@ The package has a `bin` for local stdio use but is `private` and **not
 published** to npm or any MCP registry in v0.1.0; that needs the owner's
 explicit go-ahead.
 
-## 6. KLIPY as the first source (v0.3.0)
+## 9. KLIPY as the first source (v0.3.0, updated 2026-11-16)
 
-**Decision.** Use [KLIPY](https://klipy.com) for reaction/meme GIFs when
-`KLIPY_API_KEY` is set (it is set on the public instance). Wikimedia Commons
-and Openverse remain as a separate fallback.
+**Decision.** Use [KLIPY](https://klipy.com) as the primary GIF search
+provider when `KLIPY_API_KEY` is set (it is set on the public instance). The
+key is held only by the server operator. End users and MCP clients still need
+no auth or key. Wikimedia Commons and Openverse remain as a separate fallback
+and are the only sources when no key is set. Results from KLIPY and the open
+sources are never mixed in one list.
 
 **Why.** Users expect the GIFs that WhatsApp and Microsoft Teams pickers show.
 Those come from commercial libraries (Teams uses GIPHY; WhatsApp moved its
@@ -212,8 +220,8 @@ production keys are free after approval, with attribution required.
   requires, and is never accepted from clients or echoed in errors.
 - No `customer_id` is sent, so no ads are requested.
 
-**Open items.** KLIPY's requirements call for written approval of
-server-side calls and response caching; an MCP server cannot call KLIPY from
-the end user's device. The request (and the production key request) is
-drafted in [KLIPY.md](KLIPY.md). The share-trigger endpoint is not called
+**Requests and open items (2026-11-16).** Written approval for server-side
+use and a production key have been requested from KLIPY. An MCP server cannot
+call KLIPY from the end user's device; the request text and Partner Panel
+notes are in [KLIPY.md](KLIPY.md). The share-trigger endpoint is not called
 because a server cannot see whether the user actually sent a GIF.

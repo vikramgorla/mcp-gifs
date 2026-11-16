@@ -16,10 +16,11 @@
     "mcp-server",
     "model-context-protocol",
     "gif",
+    "gif-search",
+    "klipy",
     "wikimedia-commons",
     "openverse",
-    "cloudflare-workers",
-    "klipy"
+    "cloudflare-workers"
   ],
   "engines": {
     "node": ">=20"

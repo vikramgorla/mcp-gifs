@@ -1,6 +1,7 @@
 /**
  * Live smoke test (NOT run in CI): hits the real Wikimedia Commons and
  * Openverse APIs, once directly and once through the stdio MCP server.
+ * If KLIPY_API_KEY is set, the stdio server also uses KLIPY.
  *
  *   npm run smoke                 # direct + stdio
  *   npm run smoke -- "happy dance" # custom queries

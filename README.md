@@ -5,7 +5,7 @@ server that lets AI agents search GIFs the way chat apps do. Agents call
 `search_gifs` with a few words and get back direct GIF links, previews,
 dimensions and a ready-made credit line for each result.
 
-**GIF search is powered by [KLIPY](https://klipy.com).**
+**GIF search powered by [KLIPY](https://klipy.com).**
 
 - **Sources:** [KLIPY](https://klipy.com) for reaction/meme GIFs (the kind
   WhatsApp and Teams pickers show), with openly licensed GIFs from
@@ -85,8 +85,9 @@ npm ci && npm run build
 ```
 
 This config works in Claude Desktop (`claude_desktop_config.json`), Cursor and
-other stdio clients. The stdio server calls Commons/Openverse directly from
-your machine.
+other stdio clients. The stdio server talks to the sources from your machine:
+KLIPY when `KLIPY_API_KEY` is set in the server entry, otherwise Wikimedia
+Commons and Openverse only. MCP clients still need no key.
 
 ## Tools
 
@@ -101,8 +102,12 @@ your machine.
 | `max_size_mb` | number 0.1-100                         | `10`     | Skip larger files (Commons GIFs range from 1 KB to 40+ MB). |
 | `locale`      | string like `en_US`                    | none     | KLIPY only: localized results. |
 
-Returns `structuredContent` plus a readable markdown summary. Real output for
-`{"query": "rocket launch", "limit": 2}` (2026-11-14):
+Returns `structuredContent` plus a readable markdown summary. The sample
+below is from the open-licence sources (`{"query": "rocket launch", "limit": 2}`,
+2026-11-14). On the public instance, `source=auto` tries KLIPY first and
+typically returns `source: "klipy"` results with a "Powered by KLIPY"
+attribution. Commons and Openverse are used only when KLIPY has no match,
+is unavailable, or no server key is set.
 
 ```json
 {
@@ -170,11 +175,10 @@ Field notes:
 
 | Argument | Type   | Default  | Notes |
 |----------|--------|----------|-------|
-| `id`     | string | required | An `id` from `search_gifs`, e.g. `wikimedia:File:Spinning Dancer.gif` or `openverse:<uuid>`. |
+| `id`     | string | required | An `id` from `search_gifs`, e.g. `klipy:<slug>`, `wikimedia:File:Spinning Dancer.gif` or `openverse:<uuid>`. `klipy:` ids work when KLIPY is configured. |
 | `safety` | `safe` \| `moderate` | `safe` | |
 
 Returns `{ "found": boolean, "gif": <same shape as above> | null }`.
-`klipy:<slug>` ids work when KLIPY is configured.
 
 ### `trending_gifs` (only when KLIPY is configured)
 
@@ -378,7 +382,7 @@ MCP_URL=http://localhost:8787/mcp npm run smoke     # also test an HTTP endpoint
 npm run stdio                                       # run the stdio server from source
 ```
 
-Layout: `src/sources/` (Commons and Openverse clients and mapping),
+Layout: `src/sources/` (KLIPY, Commons and Openverse clients and mapping),
 `src/search.ts` (fallback, de-duplication, caching), `src/safety.ts`,
 `src/server.ts` (MCP tools), `src/app.ts` (shared HTTP), `src/vercel.ts` /
 `api/index.ts` (Vercel Edge entry), `src/worker.ts` (Workers self-host entry), `src/stdio.ts`.

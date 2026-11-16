@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Changed
+- README redesigned to match the homepage: sticker-style banner (light and
+  dark), badges, a homepage screenshot, quick setup per client, a tools
+  overview, and friendlier section names. Reference details moved into
+  expandable sections.
 - Docs, decision record and package keywords present KLIPY as the primary
   GIF search provider. The KLIPY key is held only by the server operator;
   end users still need no auth. If no key is set, search uses Wikimedia

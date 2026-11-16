@@ -30,6 +30,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** GET a JSON document with our User-Agent, a hard timeout and one polite retry. */
 export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise<T> {
+  return (await fetchJsonWithHeaders<T>(url, opts)).data;
+}
+
+/** Like fetchJson, but also returns the response headers (for header-driven caching). */
+export async function fetchJsonWithHeaders<T>(url: string, opts: FetchJsonOptions): Promise<{ data: T; headers: Headers }> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const maxRetry = opts.maxRetryAfterSeconds ?? 2;
   for (let attempt = 0; ; attempt++) {
@@ -46,7 +51,7 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions): Promise
     }
     if (res.ok) {
       try {
-        return (await res.json()) as T;
+        return { data: (await res.json()) as T, headers: res.headers };
       } catch {
         throw new UpstreamError('invalid JSON response', res.status);
       }

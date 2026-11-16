@@ -6,7 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-16
+
 ### Changed
+- Following KLIPY's feedback, caching of KLIPY responses now follows KLIPY's
+  response headers (`Cache-Control` `s-maxage`/`max-age` minus `Age`, else
+  `Expires`) instead of a fixed 10-minute (search) / 5-minute (trending)
+  cache. `no-store`, `no-cache`, `private` or no freshness headers mean no
+  caching. An open-licence fallback after a KLIPY miss is cached no longer
+  than KLIPY's response allows. `CACHE_TTL_SECONDS` now applies only to
+  open-licence results.
+- The text summary agents read now ends with "show Powered by KLIPY, keep
+  this order and load each GIF from the URL given" for KLIPY results.
+- `docs/KLIPY.md` records KLIPY's feedback and how each point is met.
 - README redesigned to match the homepage: sticker-style banner (light and
   dark), badges, a homepage screenshot, quick setup per client, a tools
   overview, and friendlier section names. Reference details moved into

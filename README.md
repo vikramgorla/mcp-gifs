@@ -278,8 +278,9 @@ Requirement-by-requirement evidence (code, tests, screenshots) is in
   clients, never returned in errors or notes.
 
 **Server-side use.** An MCP server calls KLIPY from the server, not from the
-end user's device, and briefly caches API responses (search 10 minutes,
-trending 5) to stay within limits. Media is not cached. KLIPY asks for
+end user's device. KLIPY API responses are cached only as long as KLIPY's
+own `Cache-Control` / `Expires` headers allow (never, if they say not to or
+say nothing); there is no fixed cache time. Media is not cached. KLIPY asks for
 written approval for server-side integrations; the request is described in
 [docs/KLIPY.md](docs/KLIPY.md).
 
@@ -363,8 +364,9 @@ GIFs should be fun for everyone in the chat.
   unset or 0 disables). Enabled in-memory limiters return HTTP 429 with
   `Retry-After: 60`. A self-hosted Cloudflare Worker can use the
   `RATE_LIMITER` and `GLOBAL_RATE_LIMITER` bindings instead.
-- Results are cached for 10 minutes (KLIPY trending for 5), so repeated
-  searches are cheap and stay within KLIPY's limits. Media is never cached.
+- KLIPY results are cached only as long as KLIPY's response headers allow.
+  Open-licence results are cached for 10 minutes (`CACHE_TTL_SECONDS`), or
+  less when they are a fallback for a KLIPY search. Media is never cached.
 - Upstream: Commons is queried sequentially with a descriptive User-Agent
   (`mcp-gifs/<version> (https://github.com/vikramgorla/mcp-gifs)`) and
   `Retry-After` is respected. Anonymous Openverse is limited to about 20
@@ -416,7 +418,7 @@ npm run deploy                # wrangler deploy → https://mcp-gifs.<subdomain>
   Change `namespace_id` if `4711` clashes with another binding in your account,
   or remove the block to disable rate limiting.
 - `GLOBAL_RATE_LIMITER`: 25 requests / 60 s on a constant `global` key.
-- `CACHE_TTL_SECONDS`: result cache TTL (default `600`).
+- `CACHE_TTL_SECONDS`: cache TTL for open-licence results (default `600`). KLIPY results follow KLIPY's headers instead.
 
 Quick manual check against a running server:
 

@@ -40,9 +40,10 @@ jobs:
         if: steps.require.outputs.has_secrets == 'true'
         id: deploy
         run: |
-          url=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }} --env KLIPY_API_KEY="$KLIPY_API_KEY")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production URL: $url" >> "$GITHUB_STEP_SUMMARY"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}

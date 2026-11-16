@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { gifToMarkdown, searchToMarkdown } from './format.js';
-import { getGif, searchGifs, type SearchDeps } from './search.js';
+import { getGif, searchGifs, trendingGifs, type SearchDeps } from './search.js';
 import { VERSION } from './version.js';
 
 const safetySchema = z
@@ -14,12 +14,14 @@ const gifSchema = z.object({
   title: z.string(),
   url: z.string().describe('Direct URL of the original animated GIF.'),
   previewUrl: z.string().describe('Smaller preview thumbnail (about 320px wide, or a reduced Commons thumb when the original is already narrower).'),
+  mp4Url: z.string().nullable().optional().describe('Same clip as MP4 (smaller, what chat apps send). KLIPY results only.'),
+  webpUrl: z.string().nullable().optional().describe('Same clip as animated WebP. KLIPY results only.'),
   width: z.number(),
   height: z.number(),
   fileSizeBytes: z.number().nullable(),
   animated: z.boolean().nullable().describe('true = verified frameCount > 1; null = not verifiable for this source.'),
   frameCount: z.number().nullable(),
-  source: z.enum(['wikimedia-commons', 'openverse']),
+  source: z.enum(['wikimedia-commons', 'openverse', 'klipy']),
   pageUrl: z.string().describe('Landing/file page with full license details.'),
   author: z.string().nullable(),
   authorUrl: z.string().nullable(),
@@ -35,16 +37,31 @@ const searchOutput = z.object({
   safety: z.enum(['safe', 'moderate']),
   count: z.number(),
   results: z.array(gifSchema),
-  sourcesQueried: z.array(z.enum(['wikimedia-commons', 'openverse'])),
+  sourcesQueried: z.array(z.enum(['wikimedia-commons', 'openverse', 'klipy'])),
   notes: z.array(z.string()),
 });
 
+const localeSchema = z
+  .string()
+  .regex(/^[a-z]{2}_[A-Z]{2}$/)
+  .optional()
+  .describe('Optional KLIPY locale such as en_US, fr_FR or hi_IN, for localized results. Ignored by the open-licence sources.');
+
+const maxSizeSchema = z
+  .number()
+  .min(0.1)
+  .max(100)
+  .default(10)
+  .describe('Skip GIFs whose file is larger than this many MB (default 10). Commons GIFs range from a few KB to 50+ MB.');
+
 export function createServer(deps: SearchDeps = {}): McpServer {
+  const klipy = Boolean(deps.klipyApiKey);
   const server = new McpServer(
-    { name: 'mcp-gifs', version: VERSION, title: 'GIF finder (Wikimedia Commons + Openverse)' },
+    { name: 'mcp-gifs', version: VERSION, title: klipy ? 'GIF finder (KLIPY + Wikimedia Commons + Openverse)' : 'GIF finder (Wikimedia Commons + Openverse)' },
     {
-      instructions:
-        'Find openly licensed animated GIFs by keyword. Results come from Wikimedia Commons (primary) and Openverse (fallback); they skew documentary/educational rather than meme-style. Always show the attribution line with any GIF you display.',
+      instructions: klipy
+        ? 'Find animated GIFs by keyword, including the reaction/meme GIFs chat apps show. Results come from KLIPY first, with openly licensed GIFs from Wikimedia Commons and Openverse as a fallback. Use trending_gifs when there is no search text. Always show the attribution line with any GIF you display; for KLIPY results show "Powered by KLIPY".'
+        : 'Find openly licensed animated GIFs by keyword. Results come from Wikimedia Commons (primary) and Openverse (fallback); they skew documentary/educational rather than meme-style. Always show the attribution line with any GIF you display.',
     },
   );
 
@@ -53,28 +70,30 @@ export function createServer(deps: SearchDeps = {}): McpServer {
     {
       title: 'Search GIFs',
       description:
-        'Search openly licensed animated GIFs by keywords (e.g. "cat", "rocket launch", "dancing"). Returns direct GIF URLs, preview URLs, dimensions, license and a ready-made attribution string. English keywords work best.',
+        klipy
+          ? 'Search animated GIFs by keywords (e.g. "facepalm", "happy dance", "thank you"). Returns reaction/meme GIFs from KLIPY, or openly licensed GIFs when KLIPY has nothing. Each result has direct GIF (and MP4/WebP where available) URLs, a preview, dimensions and a ready-made attribution string.'
+          : 'Search openly licensed animated GIFs by keywords (e.g. "cat", "rocket launch", "dancing"). Returns direct GIF URLs, preview URLs, dimensions, license and a ready-made attribution string. English keywords work best.',
       inputSchema: z.object({
         query: z.string().trim().min(1).max(200).describe('Keywords describing the GIF you want.'),
         limit: z.number().int().min(1).max(25).default(8).describe('Max results (1-25, default 8).'),
         safety: safetySchema,
         source: z
-          .enum(['auto', 'wikimedia', 'openverse'])
+          .enum(['auto', 'klipy', 'wikimedia', 'openverse'])
           .default('auto')
-          .describe("'auto' (default): Wikimedia Commons first, Openverse to fill gaps. Or force one source."),
-        max_size_mb: z
-          .number()
-          .min(0.1)
-          .max(100)
-          .default(10)
-          .describe('Skip GIFs whose file is larger than this many MB (default 10). Commons GIFs range from a few KB to 50+ MB.'),
+          .describe(
+            klipy
+              ? "'auto' (default): KLIPY first; if it has no match, Wikimedia Commons then Openverse. Or force one source."
+              : "'auto' (default): Wikimedia Commons first, Openverse to fill gaps. Or force one source. ('klipy' is not configured on this server.)",
+          ),
+        max_size_mb: maxSizeSchema,
+        locale: localeSchema,
       }),
       outputSchema: searchOutput,
       annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
     },
-    async ({ query, limit, safety, source, max_size_mb }) => {
+    async ({ query, limit, safety, source, max_size_mb, locale }) => {
       try {
-        const result = await searchGifs({ query, limit, safety, source, maxBytes: Math.round(max_size_mb * 1024 * 1024) }, deps);
+        const result = await searchGifs({ query, limit, safety, source, locale, maxBytes: Math.round(max_size_mb * 1024 * 1024) }, deps);
         return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: { ...result } };
       } catch (err) {
         return { isError: true, content: [{ type: 'text', text: `search_gifs failed: ${(err as Error).message}` }] };
@@ -86,7 +105,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
     'get_gif',
     {
       title: 'Get GIF',
-      description: 'Fetch full details for one GIF by the id returned from search_gifs (e.g. "wikimedia:File:Foo.gif" or "openverse:<uuid>").',
+      description: 'Fetch full details for one GIF by the id returned from search_gifs (e.g. "klipy:<slug>", "wikimedia:File:Foo.gif" or "openverse:<uuid>").',
       inputSchema: z.object({
         id: z.string().min(3).max(300).describe('GIF id from search_gifs.'),
         safety: safetySchema,
@@ -106,6 +125,34 @@ export function createServer(deps: SearchDeps = {}): McpServer {
       }
     },
   );
+
+  // Only offered when KLIPY is configured: the open-licence sources have no trending feed.
+  if (klipy) {
+    server.registerTool(
+      'trending_gifs',
+      {
+        title: 'Trending GIFs',
+        description: 'Currently trending reaction GIFs from KLIPY, like the default tab of a chat app GIF picker. Use when the user wants a GIF but gave no search words.',
+        inputSchema: z.object({
+          limit: z.number().int().min(1).max(25).default(8).describe('Max results (1-25, default 8).'),
+          safety: safetySchema,
+          max_size_mb: maxSizeSchema,
+          locale: localeSchema,
+        }),
+        outputSchema: searchOutput,
+        annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: false },
+      },
+      async ({ limit, safety, max_size_mb, locale }) => {
+        try {
+          const result = await trendingGifs({ limit, safety, locale, maxBytes: Math.round(max_size_mb * 1024 * 1024) }, deps);
+          return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: { ...result } };
+        } catch (err) {
+          return { isError: true, content: [{ type: 'text', text: `trending_gifs failed: ${(err as Error).message}` }] };
+        }
+      },
+    );
+
+  }
 
   return server;
 }

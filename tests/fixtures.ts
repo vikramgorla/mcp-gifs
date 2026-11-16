@@ -93,14 +93,38 @@ export const json = (body: unknown, status = 200, headers: Record<string, string
 type Handler = (url: URL, init?: RequestInit) => Response | Promise<Response>;
 
 /** A fetch mock that routes by host and records every requested URL. */
-export function mockFetch(routes: { commons?: Handler; openverse?: Handler }) {
+export function mockFetch(routes: { commons?: Handler; openverse?: Handler; klipy?: Handler }) {
   const calls: URL[] = [];
   const fn = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
     calls.push(url);
     if (url.hostname === 'commons.wikimedia.org' && routes.commons) return routes.commons(url, init);
     if (url.hostname === 'api.openverse.org' && routes.openverse) return routes.openverse(url, init);
+    if (url.hostname === 'api.klipy.com' && routes.klipy) return routes.klipy(url, init);
     return new Response('not mocked', { status: 500 });
   });
   return { fetch: fn as unknown as typeof fetch, calls };
+}
+
+const fmt = (name: string, w: number, size: number) => ({ url: `https://static.klipy.com/${name}`, width: w, height: w, size });
+
+export function klipyItem(slug: string, over: Record<string, unknown> = {}) {
+  return {
+    id: slug.length,
+    slug,
+    title: `GIF ${slug}`,
+    type: 'gif',
+    tags: ['reaction'],
+    file: {
+      hd: { gif: fmt(`${slug}/hd.gif`, 498, 4_000_000), mp4: fmt(`${slug}/hd.mp4`, 498, 400_000), webp: fmt(`${slug}/hd.webp`, 498, 900_000) },
+      md: { gif: fmt(`${slug}/md.gif`, 300, 1_200_000), mp4: fmt(`${slug}/md.mp4`, 300, 150_000) },
+      sm: { gif: fmt(`${slug}/sm.gif`, 200, 500_000) },
+      xs: { gif: fmt(`${slug}/xs.gif`, 100, 90_000) },
+    },
+    ...over,
+  };
+}
+
+export function klipyList(items: unknown[]) {
+  return { result: true, data: { data: items, current_page: 1, per_page: 24, has_next: false } };
 }

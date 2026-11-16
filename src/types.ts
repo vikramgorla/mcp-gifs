@@ -1,6 +1,6 @@
-export type SourceName = 'wikimedia-commons' | 'openverse';
+export type SourceName = 'wikimedia-commons' | 'openverse' | 'klipy';
 export type Safety = 'safe' | 'moderate';
-export type SourceParam = 'auto' | 'wikimedia' | 'openverse';
+export type SourceParam = 'auto' | 'wikimedia' | 'openverse' | 'klipy';
 
 export interface Gif {
   /** Stable id usable with get_gif, e.g. `wikimedia:File:Foo.gif` or `openverse:<uuid>`. */
@@ -10,6 +10,10 @@ export interface Gif {
   url: string;
   /** Smaller preview/thumbnail URL (a Commons thumb, not the original, whenever one can be built). */
   previewUrl: string;
+  /** Same clip as MP4 (smaller; what chat apps actually send). KLIPY only. */
+  mp4Url?: string | null;
+  /** Same clip as animated WebP. KLIPY only. */
+  webpUrl?: string | null;
   width: number;
   height: number;
   fileSizeBytes: number | null;
@@ -36,6 +40,8 @@ export interface SearchParams {
   source: SourceParam;
   /** Skip files larger than this (bytes). Files with unknown size are kept. */
   maxBytes?: number;
+  /** KLIPY locale, e.g. en_US. Ignored by other sources. */
+  locale?: string;
 }
 
 export interface SearchResult {

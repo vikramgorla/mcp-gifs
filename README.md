@@ -6,7 +6,11 @@ Agents call `search_gifs` with a few words and get back direct GIF URLs,
 previews, dimensions, the license and a ready-made attribution line.
 
 - **Sources:** [Wikimedia Commons](https://commons.wikimedia.org) (primary) and
-  [Openverse](https://openverse.org) (fallback). No API keys anywhere.
+  [Openverse](https://openverse.org) (fallback). No API keys needed.
+- **Optional KLIPY:** set `KLIPY_API_KEY` and the server also returns the
+  reaction/meme GIFs that chat-app GIF pickers show, from
+  [KLIPY](https://klipy.com/developers), plus a `trending_gifs` tool. See
+  [KLIPY (optional)](#klipy-optional).
 - **Transports:** stateless Streamable HTTP at `/mcp` (Vercel Edge Function) and
   stdio for local use.
 - **Safety filter on by default.** Results are openly licensed, so they skew
@@ -87,8 +91,9 @@ your machine.
 | `query`       | string (1-200 chars)                   | required | Keywords, e.g. `cat`, `rocket launch`. English works best. |
 | `limit`       | integer 1-25                           | `8`      | Maximum results. |
 | `safety`      | `safe` \| `moderate`                   | `safe`   | See [Safety](#safety). No unfiltered mode. |
-| `source`      | `auto` \| `wikimedia` \| `openverse`   | `auto`   | `auto` = Commons first, Openverse fills gaps. |
+| `source`      | `auto` \| `klipy` \| `wikimedia` \| `openverse` | `auto` | `auto` = KLIPY first when configured; otherwise (or when KLIPY has no match) Commons first, Openverse fills gaps. |
 | `max_size_mb` | number 0.1-100                         | `10`     | Skip larger files (Commons GIFs range from 1 KB to 40+ MB). |
+| `locale`      | string like `en_US`                    | none     | KLIPY only: localized results. |
 
 Returns `structuredContent` plus a readable markdown summary. Real output for
 `{"query": "rocket launch", "limit": 2}` (2026-11-14):
@@ -163,6 +168,47 @@ Field notes:
 | `safety` | `safe` \| `moderate` | `safe` | |
 
 Returns `{ "found": boolean, "gif": <same shape as above> | null }`.
+`klipy:<slug>` ids work when KLIPY is configured.
+
+### `trending_gifs` (only when KLIPY is configured)
+
+| Argument      | Type                 | Default | Notes |
+|---------------|----------------------|---------|-------|
+| `limit`       | integer 1-25         | `8`     | |
+| `safety`      | `safe` \| `moderate` | `safe`  | Sent to KLIPY as `rating=g` / `pg-13`, plus the keyword filter. |
+| `max_size_mb` | number 0.1-100       | `10`    | |
+| `locale`      | string like `en_US`  | none    | |
+
+Same output shape as `search_gifs`, with `query: ""`. This is the default tab
+of a chat-app GIF picker.
+
+## KLIPY (optional)
+
+WhatsApp and Microsoft Teams show GIFs from commercial libraries (GIPHY, and
+KLIPY in some WhatsApp builds), not openly licensed ones. To get that kind of
+result, give the server a [KLIPY](https://klipy.com/developers) API key:
+
+- **stdio:** add `"env": { "KLIPY_API_KEY": "..." }` to the server entry in your MCP client config.
+- **Vercel via this repo's GitHub Actions:** add a repository secret named `KLIPY_API_KEY`; the preview and production workflows pass it to `vercel deploy --env`. (Or set it on the Vercel project with `vercel env add KLIPY_API_KEY production`.)
+- **Cloudflare Workers:** `npx wrangler secret put KLIPY_API_KEY`.
+
+What changes when the key is set:
+
+- `search_gifs` (`source: auto`) asks KLIPY first. If KLIPY has matches, only
+  KLIPY results are returned; providers are never mixed in one list. If KLIPY
+  has no match or is down, the open-licence path runs as before and `notes`
+  says so.
+- KLIPY results have `source: "klipy"`, `mp4Url`/`webpUrl` (smaller files,
+  which is what chat apps actually send), and an attribution line containing
+  **"Powered by KLIPY"**. Show it wherever the GIFs are displayed; see
+  [KLIPY's attribution guidelines](https://klipy.com/attribution).
+- `trending_gifs` is registered.
+- The key stays server-side: it comes only from the environment, is never
+  accepted from MCP clients and is not included in errors or notes. No
+  `customer_id` is sent, so KLIPY does not insert ads.
+
+KLIPY test keys allow about 100 calls per minute; production keys are free
+but need KLIPY's approval. Results are cached for 10 minutes (trending for 5).
 
 ## Attribution and licensing: your responsibility
 

@@ -6,6 +6,8 @@ export interface Env {
   RATE_LIMITER?: RateLimiter;
   GLOBAL_RATE_LIMITER?: RateLimiter;
   CACHE_TTL_SECONDS?: string;
+  /** Secret: `wrangler secret put KLIPY_API_KEY`. */
+  KLIPY_API_KEY?: string;
 }
 
 function workersCache(): ResultCache | undefined {
@@ -19,6 +21,7 @@ export default {
     const app = createHttpApp({
       cache: workersCache(),
       cacheTtlSeconds: Number(env.CACHE_TTL_SECONDS ?? '600') || 600,
+      klipyApiKey: env.KLIPY_API_KEY || undefined,
       globalRateLimiter: env.GLOBAL_RATE_LIMITER,
       rateLimiter: env.RATE_LIMITER,
       clientIp: (req) => req.headers.get('CF-Connecting-IP') ?? 'unknown',

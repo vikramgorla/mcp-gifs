@@ -189,7 +189,7 @@ KLIPY in some WhatsApp builds), not openly licensed ones. To get that kind of
 result, give the server a [KLIPY](https://klipy.com/developers) API key:
 
 - **stdio:** add `"env": { "KLIPY_API_KEY": "..." }` to the server entry in your MCP client config.
-- **Vercel:** `vercel env add KLIPY_API_KEY production`, then redeploy.
+- **Vercel via this repo's GitHub Actions:** add a repository secret named `KLIPY_API_KEY`; the preview and production workflows pass it to `vercel deploy --env`. (Or set it on the Vercel project with `vercel env add KLIPY_API_KEY production`.)
 - **Cloudflare Workers:** `npx wrangler secret put KLIPY_API_KEY`.
 
 What changes when the key is set:

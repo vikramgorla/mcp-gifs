@@ -19,6 +19,8 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # Optional. Empty or unset leaves KLIPY off (the server treats "" as no key).
+          KLIPY_API_KEY: ${{ secrets.KLIPY_API_KEY }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ] || [ -z "$VERCEL_TOKEN" ]; then
@@ -40,7 +42,7 @@ jobs:
         if: steps.require.outputs.has_secrets == 'true'
         id: deploy
         run: |
-          url=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }})
+          url=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }} --env KLIPY_API_KEY="$KLIPY_API_KEY")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production URL: $url" >> "$GITHUB_STEP_SUMMARY"
         env:

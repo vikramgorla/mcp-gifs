@@ -57,7 +57,7 @@ jobs:
           URL: ${{ steps.deploy.outputs.url }}
         run: |
           body='{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_gifs","arguments":{"query":"facepalm","limit":5}}}'
-          out=$(vercel curl /mcp --deployment "$URL" --token="$VERCEL_TOKEN" --yes -- --silent --request POST \
+          out=$(vercel curl /mcp --deployment "$URL" --yes -- --silent --request POST \
             --header 'Content-Type: application/json' \
             --header 'Accept: application/json, text/event-stream' \
             --header 'MCP-Protocol-Version: 2025-06-18' \

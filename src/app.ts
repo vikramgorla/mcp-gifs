@@ -1,5 +1,6 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
-import { landingPage } from './landing.js';
+import { BRICOLAGE_WOFF2_BASE64 } from './assets/font.js';
+import { FONT_PATH, landingPage } from './landing.js';
 import { createServer } from './server.js';
 import type { ResultCache } from './types.js';
 import { VERSION } from './version.js';
@@ -44,6 +45,12 @@ function rateLimitResponse(kind: 'server-wide' | 'per IP'): Response {
   );
 }
 
+let fontBytes: Uint8Array | undefined;
+function font(): Uint8Array {
+  if (!fontBytes) fontBytes = Uint8Array.from(atob(BRICOLAGE_WOFF2_BASE64), (c) => c.charCodeAt(0));
+  return fontBytes;
+}
+
 let handler: ReturnType<typeof createMcpHandler> | undefined;
 function getHandler(opts: HttpAppOptions) {
   if (!handler) {
@@ -79,11 +86,14 @@ export function createHttpApp(opts: HttpAppOptions = {}) {
         res.headers.set('Cache-Control', 'no-store');
         return res;
       }
+      if (url.pathname === FONT_PATH) {
+        return new Response(font(), { headers: { 'Content-Type': 'font/woff2', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' } });
+      }
       if (url.pathname === '/health') {
         return withCors(json({ status: 'ok', name: 'mcp-gifs', version: VERSION }, 200, { 'Cache-Control': 'public, max-age=60' }));
       }
       if (url.pathname === '/' && (request.method === 'GET' || request.method === 'HEAD')) {
-        return new Response(landingPage(url.origin), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
+        return new Response(landingPage(url.origin, { klipy: Boolean(opts.klipyApiKey) }), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
       }
       return withCors(json({ error: 'Not found', mcp: `${url.origin}/mcp` }, 404));
     },

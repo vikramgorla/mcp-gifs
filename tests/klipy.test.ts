@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { landingPage } from '../src/landing.js';
 import { createServer } from '../src/server.js';
 import { getGif, KLIPY_NOT_CONFIGURED, resetOpenverseCooldown, SearchFailedError, searchGifs, trendingGifs } from '../src/search.js';
 import { klipyRating, mapKlipy } from '../src/sources/klipy.js';
@@ -23,13 +24,13 @@ describe('KLIPY mapping', () => {
       source: 'klipy',
       attributionRequired: true,
     });
-    expect(g.attribution).toContain('Powered by KLIPY');
+    expect(g.attribution).toBe('"GIF face-palm-abc" · Powered by KLIPY · https://klipy.com/gifs/face-palm-abc');
   });
 
-  it('picks the largest rendition under the size cap and skips ads', () => {
+  it('picks the largest rendition under the size cap, falls back to the smallest instead of dropping, and skips non-GIF items', () => {
     expect(mapKlipy(klipyItem('a'), 1_000_000)!.url).toBe('https://static.klipy.com/a/sm.gif');
     expect(mapKlipy(klipyItem('a'), 1_000_000)!.mp4Url).toBeNull();
-    expect(mapKlipy(klipyItem('a'), 10)).toBeNull();
+    expect(mapKlipy(klipyItem('a'), 10)!.url).toBe('https://static.klipy.com/a/xs.gif');
     expect(mapKlipy(klipyItem('ad', { type: 'ad' }))).toBeNull();
   });
 
@@ -55,10 +56,18 @@ describe('searchGifs with KLIPY', () => {
     expect(u.searchParams.has('customer_id')).toBe(false);
   });
 
-  it('drops KLIPY items whose title or tags hit the safety denylist', async () => {
-    const m = mockFetch({ klipy: () => json(klipyList([klipyItem('x', { title: 'nsfw thing' }), klipyItem('y', { tags: ['gore'] }), klipyItem('ok')])) });
-    const r = await searchGifs(params(), { fetchImpl: m.fetch, klipyApiKey: KEY });
-    expect(r.results.map((g) => g.id)).toEqual(['klipy:ok']);
+  it("keeps KLIPY's order and does not filter its results (filtering is KLIPY's rating + Partner Panel)", async () => {
+    const m = mockFetch({ klipy: () => json(klipyList([klipyItem('z'), klipyItem('y', { tags: ['gore'] }), klipyItem('x'), klipyItem('w')])) });
+    const r = await searchGifs(params(), { fetchImpl: m.fetch, klipyApiKey: KEY, cacheTtlSeconds: 1 });
+    expect(r.results.map((g) => g.id)).toEqual(['klipy:z', 'klipy:y', 'klipy:x']);
+    expect(m.calls[0]!.searchParams.get('per_page')).toBe('8');
+  });
+
+  it('still blocks unsafe queries before calling KLIPY', async () => {
+    const m = mockFetch({ klipy: () => json(klipyList([klipyItem('a')])) });
+    const r = await searchGifs(params({ query: 'nsfw' }), { fetchImpl: m.fetch, klipyApiKey: KEY });
+    expect(r.count).toBe(0);
+    expect(m.calls).toHaveLength(0);
   });
 
   it('falls back to Commons when KLIPY has no matches or is down, never mixing', async () => {
@@ -112,5 +121,33 @@ describe('tool list', () => {
     const names = (s: ReturnType<typeof createServer>) => Object.keys((s as unknown as { _registeredTools: Record<string, unknown> })._registeredTools ?? {});
     expect(names(createServer({ klipyApiKey: KEY }))).toEqual(['search_gifs', 'get_gif', 'trending_gifs']);
     expect(names(createServer())).toEqual(['search_gifs', 'get_gif']);
+  });
+});
+
+describe('landing page attribution', () => {
+  it('shows a "Search KLIPY" box with "Powered by KLIPY" when KLIPY is configured', () => {
+    const html = landingPage('https://gifs.example', { klipy: true });
+    expect(html).toContain('placeholder="Search KLIPY"');
+    expect(html).toContain('>Powered by KLIPY</a>');
+    expect(html).toContain('GIF search powered by <a href="https://klipy.com"');
+  });
+
+  it('does not mention KLIPY when it is not configured', () => {
+    const html = landingPage('https://gifs.example', { klipy: false });
+    expect(html).not.toContain('Powered by KLIPY');
+    expect(html).not.toContain('Search KLIPY');
+    expect(html).toContain('placeholder="Search GIFs"');
+  });
+});
+
+describe('font asset', () => {
+  it('serves the self-hosted font with a long cache', async () => {
+    const { createHttpApp } = await import('../src/app.js');
+    const { FONT_PATH } = await import('../src/landing.js');
+    const res = await createHttpApp().fetch(new Request(`https://x.dev${FONT_PATH}`));
+    expect(res.headers.get('Content-Type')).toBe('font/woff2');
+    expect(res.headers.get('Cache-Control')).toContain('immutable');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect(String.fromCharCode(...bytes.slice(0, 4))).toBe('wOF2');
   });
 });

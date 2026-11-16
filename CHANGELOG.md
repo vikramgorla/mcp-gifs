@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- README redesigned to match the homepage: sticker-style banner (light and
+  dark), badges, a homepage screenshot, quick setup per client, a tools
+  overview, and friendlier section names. Reference details moved into
+  expandable sections.
+
 ## [0.3.0] - 2026-11-16
 
 ### Changed

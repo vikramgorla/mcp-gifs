@@ -3,41 +3,22 @@ import { z } from 'zod';
 import { gifToMarkdown, searchToMarkdown } from './format.js';
 import { getGif, searchGifs, trendingGifs, type SearchDeps } from './search.js';
 import { VERSION } from './version.js';
+import { imageObjectSchema, toImageObject } from './schema-org.js';
+import type { SearchResult } from './types.js';
+
+/** The structured result: each GIF as a schema.org ImageObject. */
+const structured = (r: SearchResult) => ({ ...r, results: r.results.map(toImageObject) });
 
 const safetySchema = z
   .enum(['safe', 'moderate'])
   .default('safe')
   .describe("Content filter. 'safe' (default) also removes violence/gore/drug terms; 'moderate' only removes sexual/explicit and hate content. There is no unfiltered mode.");
 
-const gifSchema = z.object({
-  id: z.string().describe('Pass to get_gif to re-fetch this GIF.'),
-  title: z.string(),
-  url: z.string().describe('Direct URL of the original animated GIF.'),
-  previewUrl: z.string().describe('Smaller preview thumbnail (about 320px wide, or a reduced Commons thumb when the original is already narrower).'),
-  mp4Url: z.string().nullable().optional().describe('Same clip as MP4 (smaller, what chat apps send). KLIPY results only.'),
-  webpUrl: z.string().nullable().optional().describe('Same clip as animated WebP. KLIPY results only.'),
-  width: z.number(),
-  height: z.number(),
-  fileSizeBytes: z.number().nullable(),
-  animated: z.boolean().nullable().describe('true = verified frameCount > 1; null = not verifiable for this source.'),
-  frameCount: z.number().nullable(),
-  source: z.enum(['wikimedia-commons', 'openverse', 'klipy']),
-  pageUrl: z.string().describe('Landing/file page with full license details.'),
-  author: z.string().nullable(),
-  authorUrl: z.string().nullable(),
-  license: z.string(),
-  licenseUrl: z.string().nullable(),
-  attributionRequired: z.boolean(),
-  attribution: z.string().describe('Ready-made attribution line to show next to the GIF.'),
-  creditText: z.string().describe('schema.org creditText: the credit this GIF needs, without title or link. The same for all results of a provider with a platform credit ("Powered by KLIPY"); the work\'s author and license for openly licensed files that require attribution; empty when none is required.'),
-  description: z.string().nullable(),
-});
-
 const searchOutput = z.object({
   query: z.string(),
   safety: z.enum(['safe', 'moderate']),
   count: z.number(),
-  results: z.array(gifSchema),
+  results: z.array(imageObjectSchema).describe('schema.org ImageObjects, in the provider\'s order.'),
   sourcesQueried: z.array(z.enum(['wikimedia-commons', 'openverse', 'klipy'])),
   notes: z.array(z.string()),
 });
@@ -95,7 +76,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
     async ({ query, limit, safety, source, max_size_mb, locale }) => {
       try {
         const result = await searchGifs({ query, limit, safety, source, locale, maxBytes: Math.round(max_size_mb * 1024 * 1024) }, deps);
-        return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: { ...result } };
+        return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: structured(result) };
       } catch (err) {
         return { isError: true, content: [{ type: 'text', text: `search_gifs failed: ${(err as Error).message}` }] };
       }
@@ -111,7 +92,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
         id: z.string().min(3).max(300).describe('GIF id from search_gifs.'),
         safety: safetySchema,
       }),
-      outputSchema: z.object({ found: z.boolean(), gif: gifSchema.nullable() }),
+      outputSchema: z.object({ found: z.boolean(), gif: imageObjectSchema.nullable() }),
       annotations: { readOnlyHint: true, openWorldHint: true, idempotentHint: true },
     },
     async ({ id, safety }) => {
@@ -120,7 +101,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
         if (!gif) {
           return { content: [{ type: 'text', text: `No GIF found for id ${id} (unknown id, not a GIF, or removed by the safety filter).` }], structuredContent: { found: false, gif: null } };
         }
-        return { content: [{ type: 'text', text: gifToMarkdown(gif) }], structuredContent: { found: true, gif: { ...gif } } };
+        return { content: [{ type: 'text', text: gifToMarkdown(gif) }], structuredContent: { found: true, gif: toImageObject(gif) } };
       } catch (err) {
         return { isError: true, content: [{ type: 'text', text: `get_gif failed: ${(err as Error).message}` }] };
       }
@@ -146,7 +127,7 @@ export function createServer(deps: SearchDeps = {}): McpServer {
       async ({ limit, safety, max_size_mb, locale }) => {
         try {
           const result = await trendingGifs({ limit, safety, locale, maxBytes: Math.round(max_size_mb * 1024 * 1024) }, deps);
-          return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: { ...result } };
+          return { content: [{ type: 'text', text: searchToMarkdown(result) }], structuredContent: structured(result) };
         } catch (err) {
           return { isError: true, content: [{ type: 'text', text: `trending_gifs failed: ${(err as Error).message}` }] };
         }

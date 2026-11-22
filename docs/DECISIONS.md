@@ -179,8 +179,11 @@ rendition: 320 px when the original is wider, otherwise a strictly smaller
 thumb so a narrow but long animation is not served as a multi-megabyte
 preview), `width`, `height`, `fileSizeBytes`,
 `animated`, `frameCount`, `source`, `pageUrl`, `author`, `authorUrl`,
-`license`, `licenseUrl`, `attributionRequired`, `attribution` and
-`description`. `utm_*` tracking parameters added by Commons are stripped.
+`license`, `licenseUrl`, `attributionRequired`, `attribution`, `creditText` and
+`description`. `creditText` is the schema.org property (IPTC "Credit Line"): the
+credit without title or link, so clients can show it apart from the GIF — the
+same "Powered by KLIPY" for every KLIPY result, the author and license of an
+openly licensed file that requires attribution, empty when none is required. `utm_*` tracking parameters added by Commons are stripped.
 A `max_size_mb` cap (default 10) exists because Commons GIFs range from 1 KB to
 over 40 MB.
 

@@ -1,3 +1,4 @@
+import { VERSION } from '../src/version.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import vercel from '../src/vercel.js';
 import { commonsPage, commonsResponse, json, mockFetch } from './fixtures.js';
@@ -18,7 +19,7 @@ describe('Vercel HTTP surface', () => {
     const { config } = await import('../src/vercel.js');
     expect(config.runtime).toBe('edge');
     const h = await vercel.fetch(new Request('https://gifs.example.vercel.app/health'));
-    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs', version: '0.3.1' });
+    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs', version: VERSION });
     expect(h.headers.get('Cache-Control')).toMatch(/max-age=60/);
     const l = await vercel.fetch(new Request('https://gifs.example.vercel.app/'));
     expect(await l.text()).toContain('https://gifs.example.vercel.app/mcp');
@@ -29,7 +30,7 @@ describe('Vercel HTTP surface', () => {
     vi.stubGlobal('fetch', m.fetch);
     const init = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } });
     expect(init.res.status).toBe(200);
-    expect(init.msg.result.serverInfo).toMatchObject({ name: 'mcp-gifs', version: '0.3.1' });
+    expect(init.msg.result.serverInfo).toMatchObject({ name: 'mcp-gifs', version: VERSION });
     const call = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'search_gifs', arguments: { query: 'cat dance', limit: 2 } } });
     expect(call.msg.result.structuredContent.count).toBe(2);
   });

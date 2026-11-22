@@ -1,6 +1,6 @@
 import { fetchJson, type FetchJsonOptions } from '../http.js';
 import { isGifAllowed } from '../safety.js';
-import { buildAttribution, cleanUrl, stripHtml, toWords, truncate } from '../text.js';
+import { buildAttribution, workCredit, cleanUrl, stripHtml, toWords, truncate } from '../text.js';
 import type { Gif, Safety } from '../types.js';
 
 export const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
@@ -95,6 +95,7 @@ export function mapCommonsPage(page: Page): CommonsCandidate | null {
   const frameCount = frameCountOf(info);
   const description = truncate(stripHtml(ext(info, 'ImageDescription')), 300) || null;
   const categories = ext(info, 'Categories').split('|').map((c) => c.trim()).filter(Boolean);
+  const attributionRequired = ext(info, 'AttributionRequired') !== 'false';
   const gif: Gif = {
     id: `wikimedia:${page.title}`,
     title,
@@ -111,8 +112,9 @@ export function mapCommonsPage(page: Page): CommonsCandidate | null {
     authorUrl: authorUrlFrom(artistHtml),
     license,
     licenseUrl,
-    attributionRequired: ext(info, 'AttributionRequired') !== 'false',
+    attributionRequired,
     attribution: buildAttribution({ title, author, license, licenseUrl, pageUrl, sourceLabel: 'Wikimedia Commons' }),
+    creditText: workCredit({ author, license, attributionRequired }),
     description,
   };
   return { gif, categories };

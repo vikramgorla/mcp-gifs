@@ -1,6 +1,6 @@
 import { fetchJson, type FetchJsonOptions } from '../http.js';
 import { isGifAllowed } from '../safety.js';
-import { buildAttribution, stripHtml, toWords, truncate } from '../text.js';
+import { buildAttribution, workCredit, stripHtml, toWords, truncate } from '../text.js';
 import type { Gif, Safety } from '../types.js';
 
 export const OPENVERSE_API = 'https://api.openverse.org/v1/images/';
@@ -49,6 +49,7 @@ export function mapOpenverse(img: OpenverseImage): Gif | null {
   const licenseUrl = img.license_url ?? null;
   const pageUrl = img.foreign_landing_url ?? `https://openverse.org/image/${img.id}`;
   const providerLabel = PROVIDER_LABELS[img.source ?? img.provider ?? ''] ?? (img.source ?? img.provider ?? 'the original source');
+  const attributionRequired = !['cc0', 'pdm'].includes(img.license.toLowerCase());
   return {
     id: `openverse:${img.id}`,
     title,
@@ -65,8 +66,9 @@ export function mapOpenverse(img: OpenverseImage): Gif | null {
     authorUrl: img.creator_url ?? null,
     license,
     licenseUrl,
-    attributionRequired: !['cc0', 'pdm'].includes(img.license.toLowerCase()),
+    attributionRequired,
     attribution: buildAttribution({ title, author, license, licenseUrl, pageUrl, sourceLabel: `${providerLabel} (found via Openverse)` }),
+    creditText: workCredit({ author, license, attributionRequired }),
     description: null,
   };
 }

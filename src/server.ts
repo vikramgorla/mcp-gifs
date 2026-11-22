@@ -53,8 +53,8 @@ export function createServer(deps: SearchDeps = {}): McpServer {
       title: 'Search GIFs',
       description:
         klipy
-          ? 'Search KLIPY for animated GIFs by keywords (e.g. "facepalm", "happy dance", "thank you"). Returns reaction/meme GIFs from KLIPY in KLIPY\'s order, or openly licensed GIFs when KLIPY has nothing (never mixed). Each result has direct GIF (and MP4/WebP where available) URLs, a preview, dimensions and an attribution string; KLIPY results must be shown with "Powered by KLIPY".'
-          : 'Search openly licensed animated GIFs by keywords (e.g. "cat", "rocket launch", "dancing"). Returns direct GIF URLs, preview URLs, dimensions, license and a ready-made attribution string. English keywords work best.',
+          ? 'Search KLIPY for animated GIFs by keywords (e.g. "facepalm", "happy dance", "thank you"). Returns reaction/meme GIFs from KLIPY in KLIPY\'s order, or openly licensed GIFs when KLIPY has nothing (never mixed). Each result is a schema.org ImageObject: the GIF (contentUrl), its MP4/WebP renditions (encoding), a preview (thumbnailUrl), dimensions, creator, license, provider and the credit to show (creditText); KLIPY results must be shown with "Powered by KLIPY".'
+          : 'Search openly licensed animated GIFs by keywords (e.g. "cat", "rocket launch", "dancing"). Each result is a schema.org ImageObject: the GIF (contentUrl), a preview (thumbnailUrl), dimensions, creator, license, provider and the credit to show (creditText). English keywords work best.',
       inputSchema: z.object({
         query: z.string().trim().min(1).max(200).describe('Keywords describing the GIF you want.'),
         limit: z.number().int().min(1).max(25).default(8).describe('Max results (1-25, default 8).'),

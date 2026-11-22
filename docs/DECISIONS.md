@@ -183,7 +183,8 @@ preview), `width`, `height`, `fileSizeBytes`,
 `description` internally; tool results (since 0.5.0) carry each GIF as a schema.org
 `ImageObject` (`identifier`, `name`, `contentUrl`, `encodingFormat`, `thumbnailUrl`,
 `encoding` renditions, `width`, `height`, `contentSize`, `url`, `creator`,
-`creditText`, `copyrightNotice`, `license`, `acquireLicensePage`, `provider`), the
+`creditText`, `copyrightNotice`, `license`, `acquireLicensePage`, `provider`; no
+`attribution` line: `creditText`, `name` and `url` carry it), the
 vocabulary Google Images and IPTC photo metadata use, so any client reads them
 without knowing this server. `creditText` is the schema.org property (IPTC "Credit Line"): the
 credit without title or link, so clients can show it apart from the GIF — the

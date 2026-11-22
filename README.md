@@ -176,9 +176,7 @@ Returns `structuredContent` plus a readable markdown summary. Real output for
       "provider": { "@type": "Organization", "name": "Wikimedia Commons", "url": "https://commons.wikimedia.org" },
       "isAccessibleForFree": true,
       "animated": true,
-      "frameCount": 150,
-      "attributionRequired": true,
-      "attribution": "\"Rocket Launch (2)\" by Glosome, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0), via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif"
+      "frameCount": 150
     },
     {
       "@type": "ImageObject",
@@ -258,8 +256,8 @@ Requirement-by-requirement evidence (code, tests, screenshots) is in
 - The landing page has a live GIF search whose box says **"Search KLIPY"**,
   with **"Powered by KLIPY"** (linking to klipy.com) directly under it, and a
   "GIF search powered by KLIPY" credit in the footer.
-- Every KLIPY result has `provider.name: "KLIPY"`, an `attribution` line that
-  contains **"Powered by KLIPY"**, and `creditText: "Powered by KLIPY"`. The result `notes`, the tool descriptions
+- Every KLIPY result has `provider.name: "KLIPY"` and `creditText: "Powered by
+  KLIPY"`; the text summary carries the same credit line. The result `notes`, the tool descriptions
   and the server instructions tell agents to show it with the GIFs, to keep
   KLIPY's order, to load media from the returned URLs, not to mix KLIPY GIFs
   with other providers, and to label any search box "Search KLIPY".

@@ -1,7 +1,7 @@
 // Tool results as schema.org ImageObjects (https://schema.org/ImageObject): the standard vocabulary for an image with
 // its renditions, creator, credit line, copyright notice, license and provider (the fields Google Images and IPTC photo
-// metadata use). Any client can read them without knowing this server. Fields schema.org has no property for keep
-// their own names: `animated`, `frameCount`, `attributionRequired`, `attribution` (a ready-made line with title and link).
+// metadata use). Any client can read them without knowing this server. `creditText` is the credit to show (absent:
+// none required). Fields schema.org has no property for keep their own names: `animated`, `frameCount`.
 import { z } from 'zod';
 import { KLIPY_ATTRIBUTION_URL } from './sources/klipy.js';
 import type { Gif, SourceName } from './types.js';
@@ -42,8 +42,6 @@ export const imageObjectSchema = z.object({
   isAccessibleForFree: z.literal(true),
   animated: z.boolean().nullable().describe('true = verified frameCount > 1; null = not verifiable for this source.'),
   frameCount: z.number().nullable(),
-  attributionRequired: z.boolean(),
-  attribution: z.string().describe('Ready-made attribution line (title, credit, link) for showing next to the GIF.'),
 });
 export type ImageObject = z.infer<typeof imageObjectSchema>;
 
@@ -79,7 +77,5 @@ export function toImageObject(g: Gif): ImageObject {
     isAccessibleForFree: true,
     animated: g.animated,
     frameCount: g.frameCount,
-    attributionRequired: g.attributionRequired,
-    attribution: g.attribution,
   };
 }

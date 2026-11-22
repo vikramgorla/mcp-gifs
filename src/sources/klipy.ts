@@ -95,6 +95,7 @@ export function mapKlipy(item: KlipyItem, maxBytes = Infinity): Gif | null {
     licenseUrl: KLIPY_ATTRIBUTION_URL,
     attributionRequired: true,
     attribution: `"${title}" · ${KLIPY_POWERED_BY} · ${pageUrl}`,
+    creditText: KLIPY_POWERED_BY,
     description: null,
   };
 }

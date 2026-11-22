@@ -1,3 +1,4 @@
+import { VERSION } from '../src/version.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import worker from '../src/worker.js';
 import { commonsPage, commonsResponse, json, mockFetch } from './fixtures.js';
@@ -16,7 +17,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('worker HTTP surface', () => {
   it('serves /health and the landing page', async () => {
     const h = await worker.fetch(new Request('https://x.dev/health'), {});
-    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs', version: '0.3.1' });
+    expect(await h.json()).toMatchObject({ status: 'ok', name: 'mcp-gifs', version: VERSION });
     const l = await worker.fetch(new Request('https://x.dev/'), {});
     expect(await l.text()).toContain('https://x.dev/mcp');
   });

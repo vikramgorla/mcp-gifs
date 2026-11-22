@@ -28,8 +28,14 @@ export interface Gif {
   license: string;
   licenseUrl: string | null;
   attributionRequired: boolean;
-  /** Ready-to-paste attribution line. */
+  /** Ready-to-paste attribution line (title, credit and link: for showing next to the GIF in a UI). */
   attribution: string;
+  /**
+   * schema.org `creditText` (IPTC "Credit Line"): the credit this GIF needs, without its title or link. The same for
+   * every result of a provider whose terms ask for a platform credit ("Powered by KLIPY"); the work's own credit
+   * (author and license) for openly licensed files that require attribution; '' when none is required.
+   */
+  creditText: string;
   description: string | null;
 }
 

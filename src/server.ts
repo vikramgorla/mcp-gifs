@@ -29,6 +29,7 @@ const gifSchema = z.object({
   licenseUrl: z.string().nullable(),
   attributionRequired: z.boolean(),
   attribution: z.string().describe('Ready-made attribution line to show next to the GIF.'),
+  creditText: z.string().describe('schema.org creditText: the credit this GIF needs, without title or link. The same for all results of a provider with a platform credit ("Powered by KLIPY"); the work\'s author and license for openly licensed files that require attribution; empty when none is required.'),
   description: z.string().nullable(),
 });
 

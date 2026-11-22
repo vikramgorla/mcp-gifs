@@ -44,6 +44,12 @@ export function toWords(query: string, maxWords = 8): string[] {
     .slice(0, maxWords);
 }
 
+/** schema.org creditText of an openly licensed work: "<author> · <license>" when attribution is required, else ''. */
+export function workCredit(g: { author: string | null; license: string; attributionRequired: boolean }): string {
+  if (!g.attributionRequired) return '';
+  return [g.author, g.license].filter(Boolean).join(' · ');
+}
+
 export function buildAttribution(g: { title: string; author: string | null; license: string; licenseUrl: string | null; pageUrl: string; sourceLabel: string }): string {
   const by = g.author ? ` by ${g.author}` : '';
   const lic = g.licenseUrl ? `${g.license} (${g.licenseUrl})` : g.license;

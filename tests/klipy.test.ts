@@ -25,6 +25,7 @@ describe('KLIPY mapping', () => {
       attributionRequired: true,
     });
     expect(g.attribution).toBe('"GIF face-palm-abc" · Powered by KLIPY · https://klipy.com/gifs/face-palm-abc');
+    expect(g.creditText).toBe('Powered by KLIPY'); // schema.org creditText: the platform credit, the same for every KLIPY GIF
   });
 
   it('picks the largest rendition under the size cap, falls back to the smallest instead of dropping, and skips non-GIF items', () => {

@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-22
+
+### Added
+- Every result has `creditText` (schema.org, the IPTC "Credit Line"): the
+  credit without the GIF's title or link. KLIPY results: "Powered by KLIPY";
+  openly licensed files: author and license when attribution is required,
+  empty otherwise. Clients such as chat bots can show the credit in their own
+  UI instead of in every message, and tell a platform credit (the same for
+  every result) from a work's own credit. `attribution` is unchanged.
+
 ## [0.3.1] - 2026-11-16
 
 ### Changed

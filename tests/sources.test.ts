@@ -38,6 +38,7 @@ describe('Wikimedia Commons mapping', () => {
       description: 'A cat jumping',
     });
     expect(g.attribution).toBe('"Cat jump" by Jane & Co, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0), via Wikimedia Commons: https://commons.wikimedia.org/wiki/Cat_jump.gif');
+    expect(g.creditText).toBe('Jane & Co · CC BY-SA 4.0'); // the work's own credit (author and license)
     expect(c!.categories).toEqual(['Cats', 'Animated GIF files']);
   });
 
@@ -45,6 +46,7 @@ describe('Wikimedia Commons mapping', () => {
     const g = mapCommonsPage(commonsPage({ title: 'File:Old film.gif', license: 'Public domain', licenseUrl: '', attributionRequired: 'false', artist: '<a href="//commons.wikimedia.org/w/index.php?title=User:X&amp;action=edit&amp;redlink=1">X</a>' }))!.gif;
     expect(g.licenseUrl).toBeNull();
     expect(g.attributionRequired).toBe(false);
+    expect(g.creditText).toBe(''); // no credit required
     expect(g.author).toBe('X');
     expect(g.authorUrl).toBeNull();
   });

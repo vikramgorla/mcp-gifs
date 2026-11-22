@@ -62,13 +62,13 @@ jobs:
             --data "$body")
           echo "$out" | head -c 3000; echo
           json=$(echo "$out" | sed -n 's/^data: //p' | head -1); [ -n "$json" ] || json="$out"
-          sources=$(echo "$json" | jq -r '.result.structuredContent.results[]?.source' | sort | uniq -c)
+          sources=$(echo "$json" | jq -r '.result.structuredContent.results[]?.provider.name' | sort | uniq -c)
           echo "Notes:"; echo "$json" | jq -r '.result.structuredContent.notes[]?, .error.message?' || true
           echo "Sources returned for \"facepalm\":"; echo "$sources"
           { echo "### Smoke test: search \"facepalm\""; echo '```'; echo "$sources"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           [ -n "$sources" ] || { echo "No results"; exit 1; }
           if [ -n "$KLIPY_API_KEY" ]; then
-            echo "$sources" | grep -q klipy || { echo "KLIPY key is set but no klipy results"; exit 1; }
+            echo "$sources" | grep -q KLIPY || { echo "KLIPY key is set but no klipy results"; exit 1; }
           fi
       - name: Comment preview URL
         if: steps.require.outputs.has_secrets == 'true'

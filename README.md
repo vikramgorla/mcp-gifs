@@ -156,30 +156,31 @@ Returns `structuredContent` plus a readable markdown summary. Real output for
   "count": 2,
   "results": [
     {
-      "id": "wikimedia:File:Rocket Launch (2).gif",
-      "title": "Rocket Launch (2)",
-      "url": "https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif",
-      "previewUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif",
+      "@context": "https://schema.org",
+      "@type": "ImageObject",
+      "identifier": "wikimedia:File:Rocket Launch (2).gif",
+      "name": "Rocket Launch (2)",
+      "description": "A model rocket launching in slow-motion.",
+      "contentUrl": "https://upload.wikimedia.org/wikipedia/commons/7/71/Rocket_Launch_%282%29.gif",
+      "encodingFormat": "image/gif",
+      "thumbnailUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Rocket_Launch_%282%29.gif/240px-Rocket_Launch_%282%29.gif",
       "width": 270,
       "height": 270,
-      "fileSizeBytes": 6264294,
-      "animated": true,
-      "frameCount": 150,
-      "source": "wikimedia-commons",
-      "pageUrl": "https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif",
-      "author": "Glosome",
-      "authorUrl": "https://commons.wikimedia.org/wiki/User:Glosome",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-      "attributionRequired": true,
-      "attribution": "\"Rocket Launch (2)\" by Glosome, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0), via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif",
+      "contentSize": "6.3 MB",
+      "url": "https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif",
+      "creator": { "@type": "Person", "name": "Glosome", "url": "https://commons.wikimedia.org/wiki/User:Glosome" },
       "creditText": "Glosome · CC BY-SA 4.0",
-      "description": "A model rocket launching in slow-motion."
+      "copyrightNotice": "© Glosome",
+      "license": { "@type": "CreativeWork", "name": "CC BY-SA 4.0", "url": "https://creativecommons.org/licenses/by-sa/4.0" },
+      "acquireLicensePage": "https://commons.wikimedia.org/wiki/File:Rocket_Launch_(2).gif",
+      "provider": { "@type": "Organization", "name": "Wikimedia Commons", "url": "https://commons.wikimedia.org" },
+      "isAccessibleForFree": true,
+      "animated": true,
+      "frameCount": 150
     },
     {
-      "id": "wikimedia:File:Rocket Launch (3).gif",
-      "title": "Rocket Launch (3)",
-      "url": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Rocket_Launch_%283%29.gif",
+      "@type": "ImageObject",
+      "identifier": "wikimedia:File:Rocket Launch (3).gif",
       "...": "..."
     }
   ],
@@ -255,8 +256,8 @@ Requirement-by-requirement evidence (code, tests, screenshots) is in
 - The landing page has a live GIF search whose box says **"Search KLIPY"**,
   with **"Powered by KLIPY"** (linking to klipy.com) directly under it, and a
   "GIF search powered by KLIPY" credit in the footer.
-- Every KLIPY result has `source: "klipy"`, an `attribution` line that
-  contains **"Powered by KLIPY"**, and `creditText: "Powered by KLIPY"`. The result `notes`, the tool descriptions
+- Every KLIPY result has `provider.name: "KLIPY"` and `creditText: "Powered by
+  KLIPY"`; the text summary carries the same credit line. The result `notes`, the tool descriptions
   and the server instructions tell agents to show it with the GIFs, to keep
   KLIPY's order, to load media from the returned URLs, not to mix KLIPY GIFs
   with other providers, and to label any search box "Search KLIPY".

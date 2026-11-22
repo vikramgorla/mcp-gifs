@@ -37,7 +37,11 @@ describe('worker HTTP surface', () => {
     const call = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'search_gifs', arguments: { query: 'cat dance', limit: 2 } } });
     const sc = call.msg.result.structuredContent;
     expect(sc.count).toBe(2);
-    expect(sc.results[0]).toMatchObject({ source: 'wikimedia-commons', animated: true });
+    // schema.org ImageObjects: standard fields any client can read
+    expect(sc.results[0]).toMatchObject({ '@context': 'https://schema.org', '@type': 'ImageObject', encodingFormat: 'image/gif', animated: true,
+      provider: { '@type': 'Organization', name: 'Wikimedia Commons' }, license: { '@type': 'CreativeWork' } });
+    expect(sc.results[0].contentUrl).toMatch(/^https:\/\//);
+    expect(sc.results[0]).not.toHaveProperty('previewUrl');
     expect(call.msg.result.content[0].text).toContain('Attribution:');
   });
 

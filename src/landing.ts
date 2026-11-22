@@ -192,22 +192,22 @@ function script(): string {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'tile';
-      b.title = g.title + ' (tap to copy the GIF link)';
+      b.title = g.name + ' (tap to copy the GIF link)';
       const img = document.createElement('img');
-      img.src = g.previewUrl; // media loads straight from the provider
-      img.alt = g.title;
+      img.src = g.thumbnailUrl; // media loads straight from the provider
+      img.alt = g.name;
       img.loading = 'lazy';
       img.decoding = 'async';
       if (g.width && g.height) { img.width = g.width; img.height = g.height; }
       b.append(img);
-      if (g.source !== 'klipy') {
+      if (g.provider.name !== 'KLIPY') {
         const cap = document.createElement('span');
         cap.className = 'cap';
-        cap.textContent = (g.author ? g.author + ', ' : '') + g.license + ' via ' + (g.source === 'openverse' ? 'Openverse' : 'Wikimedia Commons');
+        cap.textContent = (g.creator ? g.creator.name + ', ' : '') + g.license.name + ' via ' + g.provider.name;
         b.append(cap);
       }
       b.addEventListener('click', async () => {
-        try { await navigator.clipboard.writeText(g.url); say('GIF link copied!'); } catch { window.open(g.url, '_blank', 'noopener'); }
+        try { await navigator.clipboard.writeText(g.contentUrl); say('GIF link copied!'); } catch { window.open(g.contentUrl, '_blank', 'noopener'); }
       });
       const col = cols.reduce((a, c) => (c.h < a.h ? c : a));
       col.el.append(b);

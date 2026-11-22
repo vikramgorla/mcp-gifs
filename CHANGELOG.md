@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-22
+
+### Changed
+- Tool results (`structuredContent`) carry each GIF as a schema.org
+  `ImageObject`: `identifier`, `name`, `description`, `contentUrl`,
+  `encodingFormat`, `thumbnailUrl`, `encoding` (MP4 and WebP renditions as
+  `MediaObject`s), `width`, `height`, `contentSize`, `url` (the provider's
+  page), `creator`, `creditText`, `copyrightNotice`, `license` (a
+  `CreativeWork` with name and link), `acquireLicensePage`, `provider` and
+  `isAccessibleForFree`, plus `animated` and `frameCount`. Replaces `id`,
+  `title`, `url`, `previewUrl`, `mp4Url`, `webpUrl`, `fileSizeBytes`,
+  `source`, `pageUrl`, `author`, `authorUrl`, `licenseUrl`, the plain-text
+  `license`, `attributionRequired` and `attribution` (`creditText` is the
+  credit to show; absent means none is required). Breaking for structured
+  clients; the text content is unchanged.
+
 ## [0.4.0] - 2026-11-22
 
 ### Added

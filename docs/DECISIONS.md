@@ -180,7 +180,13 @@ thumb so a narrow but long animation is not served as a multi-megabyte
 preview), `width`, `height`, `fileSizeBytes`,
 `animated`, `frameCount`, `source`, `pageUrl`, `author`, `authorUrl`,
 `license`, `licenseUrl`, `attributionRequired`, `attribution`, `creditText` and
-`description`. `creditText` is the schema.org property (IPTC "Credit Line"): the
+`description` internally; tool results (since 0.5.0) carry each GIF as a schema.org
+`ImageObject` (`identifier`, `name`, `contentUrl`, `encodingFormat`, `thumbnailUrl`,
+`encoding` renditions, `width`, `height`, `contentSize`, `url`, `creator`,
+`creditText`, `copyrightNotice`, `license`, `acquireLicensePage`, `provider`; no
+`attribution` line: `creditText`, `name` and `url` carry it), the
+vocabulary Google Images and IPTC photo metadata use, so any client reads them
+without knowing this server. `creditText` is the schema.org property (IPTC "Credit Line"): the
 credit without title or link, so clients can show it apart from the GIF — the
 same "Powered by KLIPY" for every KLIPY result, the author and license of an
 openly licensed file that requires attribution, empty when none is required. `utm_*` tracking parameters added by Commons are stripped.
